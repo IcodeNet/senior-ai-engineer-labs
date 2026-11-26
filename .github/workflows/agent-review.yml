@@ -29,4 +29,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: agent-review-report
-          path: agent-review.json
+          path: agent-factory/agent-review.json
+          if-no-files-found: error

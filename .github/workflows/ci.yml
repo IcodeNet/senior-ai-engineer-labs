@@ -18,3 +18,5 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Smoke test Fastify and built web output
+        run: pnpm --filter @labs/api test && test -f apps/web/dist/index.html

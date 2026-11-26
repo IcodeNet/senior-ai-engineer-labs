@@ -23,12 +23,12 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [x] Architecture decision record convention established.
 
 ## In progress
-- [ ] Implement monorepo foundation; the directory layout currently documented is **proposed**, not yet implemented.
+- [ ] Complete Phase 0 monorepo and factory MVP verification. Foundation files exist on origin and CI passed install, typecheck, test and build, but runtime smoke tests and PR-review behaviour remain unverified.
 - [ ] Design the runnable Lab 01 local-first vertical slice.
 
 ## Next actions
-1. Create pnpm workspace, shared TypeScript config, linting, Vitest and CI.
-2. Create runnable React web and Fastify API with health endpoint and shared types.
+1. Close Phase 0 evidence checklist: https://github.com/IcodeNet/senior-ai-engineer-labs/issues/2. Verify runtime startup, real PR review, negative fixtures, security and independent review.
+2. Confirm origin files and lockfile, pin toolchain, and update factory verification checks.
 3. Build Lab 01 local fixtures, retrieval interface, approval filtering and deterministic evaluation tests.
 4. Add Azure integration behind explicit configuration, with cost review and safe provisioning/cleanup scripts.
 5. Measure retrieval and generation quality; record reproducible results.
@@ -40,7 +40,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - Whether to use Azure CLI/Entra ID or API-key authentication for each service.
 
 ## Verification and constraints
-Documentation commits are complete. **No runnable app, lab code, infrastructure, cost estimate or cleanup automation has yet been verified.** Do not mark those tasks complete until implemented and tested.
+Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

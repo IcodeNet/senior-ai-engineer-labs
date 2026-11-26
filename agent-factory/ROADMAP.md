@@ -23,7 +23,7 @@ Build a governed, evidence-driven AI software engineering system that can plan, 
 | AF-15 | Continuous maintenance | Identify documentation drift, dependency issues and technical debt |
 | AF-16 | Scheduled bounded operations | Run approved periodic checks and create actionable reports/PRs |
 | AF-17 | Governance and audit | Enforce human approvals, immutable evidence, rollback and policy checks |
-| AF-18 | Optional fine-tuning research | Evaluate whether model training improves results beyond prompt/tool changes |
+| AF-19 | Evidence verification and claim auditing | Cross-check agent assertions against origin commits, CI steps, runtime smoke tests and phase acceptance evidence; report unsupported claims |\n| AF-18 | Optional fine-tuning research | Evaluate whether model training improves results beyond prompt/tool changes |
 
 ## Implementation waves
 
@@ -72,3 +72,13 @@ Optimise agent routing, reliability and cost. Investigate fine-tuning only if ev
 - [ ] Introduce specialist agents and controlled automation after measured success.
 
 See root AGENTS.md and docs/PROGRESS.md for repository-wide rules and status.
+
+## Evidence verification capability — acceptance criteria
+- [ ] Machine-readable claim/evidence/verdict schema with source URL, observed timestamp and remediation.
+- [ ] PR reviewer compares claimed files and commits with the remote branch and inspects actual CI steps/results.
+- [ ] Negative fixtures prove false claims ("pushed", "tests passed", "complete") are detected.
+- [ ] Weekly review flags stale PROGRESS.md and incomplete phase gates.
+- [ ] Human-reviewed completion report with immutable links; no self-certification.
+- [ ] Test the verifier end-to-end in CI before marking AF-19 implemented.
+
+**Status: specified, not implemented.** A passing CI job is evidence for only the steps it executed.

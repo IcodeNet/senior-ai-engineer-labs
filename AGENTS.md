@@ -51,3 +51,13 @@ A lab is complete only when the documented code actually runs, tests and relevan
 
 ## Agent working protocol
 Before changing code, read this file and the relevant lab README. Make the smallest coherent change; run applicable tests; update documentation and progress; report files changed, commands executed, results, limitations and any remaining cloud resources. Do not silently provision, incur costs, delete resources or claim unverified success.
+
+## Evidence-first delivery and verification (mandatory)
+- **No statements without evidence.** Never claim a feature is implemented, committed, pushed, reviewed, tested, deployed, secure, or complete without a verifiable artefact (commit SHA and branch, CI run URL, test output, PR, or observed runtime response).
+- Distinguish **planned**, **implemented**, **committed locally**, **present on origin**, **CI verified**, **end-to-end verified**, and **complete**. A local commit is not evidence of a remote push; CI success only proves the checks actually executed.
+- Before reporting repository delivery, fetch the remote default branch and verify the expected files and commit are visible there. Report the exact repository, branch, SHA, and verification link.
+- Each phase must have a version-controlled acceptance checklist and evidence for every item. Never tick a box based solely on agent assertion. If any gate fails or is unverified, status remains **in progress**.
+- For every PR and weekly factory review, compare agent claims with GitHub commit/file state, CI job steps, tests, and where relevant smoke-test output. Flag unsupported claims, missing checks, stale progress documents and evidence mismatches as findings.
+- Independent review must be labelled accurately: do not claim another model or reviewer ran unless its identity, invocation and output are recorded. An agent cannot self-certify its own completion.
+- Verification reports should contain: claim, expected evidence, observed evidence URL or command output, verdict (verified/unverified/contradicted), timestamp, and remediation owner/action. Never expose secrets in evidence.
+- Changes to these evidence rules, approval gates or completion criteria require explicit human review; the factory may propose but not silently weaken them.

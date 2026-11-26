@@ -9,7 +9,17 @@ Learn to design, build, evaluate and explain a production-minded retrieval and R
 Study indexing, ingestion, chunking, embeddings, index schemas, approval metadata, BM25, vector search, hybrid search, RRF and semantic reranking. Answer scenario-based questions before implementation; record gaps and architectural trade-offs.
 
 ### Phase 2 — Local implementation (no Azure cost)
-Use TypeScript, Fastify and Vitest to implement retrieval interfaces, synthetic documents, approval filtering, context assembly, citation handling and evaluation metrics. Use mocks or fixtures; no cloud credentials are needed. The shared React UI can exercise the lab through the Fastify API.
+Use TypeScript, Fastify and Vitest to implement retrieval interfaces, synthetic documents, approval filtering, context assembly, citation handling and evaluation metrics. Use mocks or fixtures; no cloud credentials are needed. Implement a provider abstraction so the same Fastify application can select a deterministic in-memory provider, an optional community simulator, or managed Azure AI Search. The shared React UI can exercise the lab through the Fastify API.
+
+#### Local Azure AI Search simulator evaluation (planned, not yet implemented)
+- There is **no official full-featured Microsoft Azure AI Search local emulator** comparable to the Cosmos DB Emulator. `azd` provisions and manages Azure resources; it does not emulate Azure AI Search.
+- Evaluate the community [Ellerbach Azure AI Search Simulator](https://github.com/Ellerbach/azure-ai-search-simulator) as an **optional** local backend. Confirm project maintenance, licensing, SDK/API compatibility, supported indexing, filtering, BM25/vector/hybrid features and any limitations against a pinned version before adoption. Do not claim semantic ranker or Azure-specific RRF parity without comparative evidence.
+- Keep deterministic in-memory fixtures as the mandatory CI baseline; simulator-dependent integration tests should be explicitly tagged and runnable locally, preferably with a reproducible container/service setup if supported.
+- Define `SearchProvider` operations for indexing/upsert, delete/revoke, filtered search and retrieval diagnostics. Enforce approved-document visibility at the backend boundary and test denial/revocation regardless of provider.
+- Use the same synthetic documents and relevance labels to compare providers. Record divergences rather than assuming equivalence.
+- The first cloud validation must use actual Azure AI Search to establish parity for index schemas, filters, hybrid/RRF and semantic ranking where enabled.
+
+**Acceptance criteria:** local provider runs without Azure credentials; approval and revocation negative tests pass; documented simulator capability matrix and limitations; repeatable retrieval evaluations; real Azure integration remains behind an explicit cost/approval gate.
 
 ### Phase 3 — Azure playground integration (optional, potentially chargeable)
 Before provisioning anything:
@@ -18,7 +28,7 @@ Before provisioning anything:
 - Obtain the learner's explicit approval for chargeable deployment.
 - Prefer an existing suitable playground resource or a free tier where actually available.
 - Define a lab-specific resource group and consistent tags, including owner, lab ID and expiry.
-- Provision through repeatable infrastructure-as-code where practical, with a documented destroy/cleanup command.
+- Provision through `azd` plus Bicep where practical, with a documented destroy/cleanup command.
 
 Use environment variables or local Azure CLI credentials rather than committed secrets. Example names (actual requirements depend on the chosen authentication method):
 

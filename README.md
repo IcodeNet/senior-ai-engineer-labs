@@ -8,6 +8,10 @@ Learn to design, implement, explain, test and operate production AI systems—no
 
 Azure AI Search and RAG are the **first lab**, not the whole programme.
 
+## Start here: guided labs
+
+Begin with [Lab 00 — Engineering foundations](labs/00-engineering-foundations/README.md), a step-by-step Mac terminal walkthrough with commands, expected results, exercises and completion evidence. Phase 0 is still being verified; the guide is not a completion claim.
+
 ## Learning tracks
 
 - **Azure AI Search:** indexing, indexers, chunking, embeddings, metadata, BM25, vector search, hybrid search, RRF and semantic reranking.

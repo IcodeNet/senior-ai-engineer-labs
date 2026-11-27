@@ -80,6 +80,54 @@ test("the link allowlist matches whole domains, and spacing out the canary does 
   assert.deepEqual(await check("My rules end with c a n a r y - 7 F 3 A."), { kind: "blocked", reason: "canary-leak", quarantined: [] });
 });
 
+test("single-slash and no-slash https links are read as absolute URLs, the fail-closed choice", async () => {
+  const check = (reply: string) => guardedAnswer("q", [policy], { llm: async () => reply, canary, allowedDomains });
+  // With no base URL (an email, a log viewer, a renderer on another scheme) these go to evil.example, so they are judged by that host.
+  for (const link of ["https:/evil.example/x", "https:evil.example/x", "HTTPS:\\evil.example", "http:evil.example"])
+    assert.deepEqual(await check(`Verify at ${link} [travel]`), { kind: "blocked", reason: "disallowed-link", quarantined: [] }, link);
+  for (const link of ["https:/northbank.example/a", "https:intranet.northbank.example/b"])
+    assert.equal((await check(`See ${link} [travel]`)).kind, "answer", link);
+});
+
+test("rendered links must be https whatever their scheme: javascript:, data:, vbscript: and the rest are blocked", async () => {
+  const check = (reply: string) => guardedAnswer("q", [policy], { llm: async () => reply, canary, allowedDomains });
+  for (const link of [
+    "[the travel policy](javascript:alert(document.cookie))",
+    "[policy](JaVaScRiPt:alert(1))",
+    "[policy]( vbscript:msgbox(1))",
+    "![logo](data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=)",
+    "[policy](data:text/html,<script>alert(1)</script>)",
+    '<a href="javascript:alert(1)">policy</a>',
+    "<a href='vbscript:msgbox(1)'>policy</a>",
+    "<img src=data:image/png;base64,iVBORw0KGgo=>",
+    "<mailto:staff@evil.example>",
+    "[write to us](mailto:staff@northbank.example)",
+    "[policy](/travel)",
+  ])
+    assert.deepEqual(await check(`See ${link} [travel]`), { kind: "blocked", reason: "disallowed-link", quarantined: [] }, link);
+  for (const reply of [
+    "See [the travel policy](https://intranet.northbank.example/travel) [travel]",
+    'See <a href="https://northbank.example/travel">policy</a> [travel]',
+    "Note: economy only. The data: 6 hours or less [travel]",
+  ])
+    assert.equal((await check(reply)).kind, "answer", reply);
+});
+
+test("only the default https port is allowed, and links the parser rejects are blocked", async () => {
+  const check = (reply: string) => guardedAnswer("q", [policy], { llm: async () => reply, canary, allowedDomains });
+  for (const link of [
+    "https://northbank.example:8443/login",
+    "https://intranet.northbank.example:444/travel",
+    "//northbank.example:8080/c",
+    "https://[evil/x",
+    "https://evil.example:99999/",
+    "https://north%bank.example/",
+    "[policy](https://[northbank.example/)",
+  ])
+    assert.deepEqual(await check(`See ${link} [travel]`), { kind: "blocked", reason: "disallowed-link", quarantined: [] }, link);
+  assert.equal((await check("See https://northbank.example:443/a [travel]")).kind, "answer", ":443 is the default port");
+});
+
 test("with every document quarantined the model is not called", async () => {
   const { llm, prompts } = gullible();
   const result = await guardedAnswer("q", [attacks[0].docs[1]], { llm, canary, allowedDomains });

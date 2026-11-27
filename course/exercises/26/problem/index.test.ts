@@ -169,6 +169,25 @@ test("a failed auto-executed call releases its reservation", async () => {
   assert.equal((await gate.invoke("submit_expense", { amountPence: 45_000 }, "alice")).status, "executed", "the failed £450 does not count");
 });
 
+test("a failure releases only its own reservation, not what other calls already spent", async () => {
+  let fail = false;
+  const gate = new ApprovalGate({
+    policies,
+    now: () => 1_000,
+    execute: async () => {
+      if (fail) throw new Error("ledger down");
+      return "ok";
+    },
+  });
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 30_000 }, "alice")).status, "executed");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 30_000 }, "bob")).status, "executed");
+  fail = true;
+  await assert.rejects(gate.invoke("submit_expense", { amountPence: 10_000 }, "alice"), { message: "ledger down" });
+  fail = false;
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 25_000 }, "alice")).status, "pending", "alice's earlier £300 still counts: £300 + £250 reaches £500");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 25_000 }, "bob")).status, "pending", "and so does bob's £300");
+});
+
 test("the audit records failed executions as failures, and a failed approval is still used up", async () => {
   const { gate } = setup(undefined, (tool) => tool !== "get_policy");
   await assert.rejects(gate.invoke("submit_expense", { amountPence: 1_000 }, "alice"), { message: "submit_expense failed downstream" });

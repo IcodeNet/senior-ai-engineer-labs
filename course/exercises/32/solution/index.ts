@@ -55,19 +55,29 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  // Candidates: scheme links (https:// or with backslashes), scheme-relative //host not glued to a word ("50//50" is not a link),
-  // and www.host. Bare "host/path" text is not detected.
-  const candidates = /\b[a-z][a-z0-9+.-]*:[\\/]{2}[^\s)\]"'<>]+|(?<![\w/\\:])[\\/]{2}[^\s)\]"'<>]+|\bwww\.[^\s)\]"'<>]+/gi;
-  for (const [candidate] of output.matchAll(candidates)) {
+  // Bare candidates: a scheme followed by slashes or backslashes; http(s) with no slash at all ("https:evil.example");
+  // scheme-relative //host not glued to a word ("50//50" is not a link); and www.host. Bare "host/path" is not detected.
+  const bare = /\b[a-z][a-z0-9+.-]*:[\\/]+[^\s)\]"'<>]+|\bhttps?:[^\s)\]"'<>]+|(?<![\w/\\:])[\\/]{2}[^\s)\]"'<>]+|\bwww\.[^\s)\]"'<>]+/gi;
+  // Rendered links, whatever their scheme: markdown [text](target) and ![alt](target), <scheme:...> autolinks, href= and src=.
+  const rendered = /\]\(\s*<?([^\s)>]+)|<([a-z][a-z0-9+.-]*:[^\s>]+)>|\b(?:href|src)\s*=\s*["']?([^\s"'>]+)/gi;
+  const candidates = [
+    ...[...output.matchAll(bare)].map((match) => match[0]),
+    ...[...output.matchAll(rendered)].map((match) => match[1] ?? match[2] ?? match[3]),
+  ];
+  for (const candidate of candidates) {
     const absolute = /^[\\/]{2}/.test(candidate) ? `https:${candidate}` : /^www\./i.test(candidate) ? `https://${candidate}` : candidate;
     let url: URL;
     try {
-      // WHATWG parsing, as browsers do: a backslash becomes "/", so "evil.example<backslash>.northbank.example" has host evil.example.
+      // WHATWG parsing, as browsers do, with no base: a backslash becomes "/", so "evil.example<backslash>.northbank.example"
+      // has host evil.example, and "https:/evil.example" or "https:evil.example" is read as an absolute URL for evil.example.
       url = new URL(absolute);
     } catch {
-      return true;
+      return true; // a link the parser rejects, or a relative one we cannot resolve: fail closed
     }
+    // Only https: javascript:, data:, vbscript:, mailto:, http: and every other scheme are disallowed.
     if (url.protocol !== "https:" || url.username !== "" || url.password !== "") return true;
+    // Only the default port: the parser turns an explicit :443 into "", so any other port is a different origin.
+    if (url.port !== "") return true;
     const host = url.hostname.replace(/\.$/, "");
     if (!allowedDomains.some((domain) => host === domain || host.endsWith(`.${domain}`))) return true;
   }

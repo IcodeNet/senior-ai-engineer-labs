@@ -144,6 +144,19 @@ test("network errors, resets and bugs count as failures, so a hard outage opens 
   assert.equal(breaker.state(), "open");
 });
 
+test("every 5xx is a dependency failure, including 501 and 505 that are not retried", async () => {
+  for (const status of [501, 505, 511]) {
+    assert.equal(isCallerError(new HttpError(status)), false, String(status));
+    assert.equal(isRetryable(new HttpError(status)), false, `${status} will fail again, so it is not retried`);
+  }
+  const breaker = new CircuitBreaker({ failureThreshold: 2, cooldownMs: 1000, now: () => 0 });
+  let calls = 0;
+  const notImplemented = async () => { calls++; throw new HttpError(501); };
+  for (let i = 0; i < 5; i++) await assert.rejects(breaker.call(notImplemented));
+  assert.equal(breaker.state(), "open", "a 501 is the dependency failing, not the caller");
+  assert.equal(calls, 2);
+});
+
 test("fallbacks degrade gracefully and say so", async () => {
   assert.deepEqual(await withFallback(async () => "model answer", () => "unused"), { value: "model answer", degraded: false });
   const breaker = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 1000, now: () => 0 });

@@ -12,7 +12,7 @@ Detection is a precision/recall trade-off:
 
 Redaction uses **typed, reversible placeholders** — `[EMAIL_1]`, `[CARD_1]` — so the model can still reason ("refund to [IBAN_1]") and your backend can **restore** the values in the final answer for the authorised user. The placeholder → value mapping stays server-side, in memory for the request; it must never be logged or sent to the model.
 
-Regex detectors miss names, addresses and free-text identifiers; production systems add an NER service (for example Azure AI Language PII detection) on top. The National Insurance pattern accepts prefixes HMRC never issues, and text that already contains something like `[EMAIL_1]` would collide with generated placeholders (a per-request nonce in the placeholder, such as `[EMAIL_1_x7f]`, avoids that). All values in this step are synthetic or public test values: `QQ` is HMRC's example NI prefix.
+Regex detectors miss names, addresses and free-text identifiers; production systems add an NER service (for example Azure AI Language PII detection) on top. Card windows start and end at digit-group boundaries, so a card with other digits glued on without a separator (`124111111111111111`) is still missed. The National Insurance pattern accepts prefixes HMRC never issues, and text that already contains something like `[EMAIL_1]` would collide with generated placeholders (a per-request nonce in the placeholder, such as `[EMAIL_1_x7f]`, avoids that). All values in this step are synthetic or public test values: `QQ` is HMRC's example NI prefix.
 
 ## Interview question
 > Legal asks you to guarantee that no customer PII reaches the model provider or your logs. What do you build, what can you honestly promise, and how do you measure it?

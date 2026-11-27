@@ -55,11 +55,21 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  // Absolute (https://host), scheme-relative (//host) and www.host links. Bare "host/path" text is not detected.
-  for (const match of output.matchAll(/(?:\bhttps?:)?\/\/([^\s/?#:)\]"'>]+)|\b(www\.[^\s/?#:)\]"'>]+)/gi)) {
-    const host = (match[1] ?? match[2]).toLowerCase().replace(/\.$/, "");
-    const allowed = allowedDomains.some((domain) => host === domain || host.endsWith(`.${domain}`));
-    if (!allowed) return true;
+  // Candidates: scheme links (https:// or with backslashes), scheme-relative //host not glued to a word ("50//50" is not a link),
+  // and www.host. Bare "host/path" text is not detected.
+  const candidates = /\b[a-z][a-z0-9+.-]*:[\\/]{2}[^\s)\]"'<>]+|(?<![\w/\\:])[\\/]{2}[^\s)\]"'<>]+|\bwww\.[^\s)\]"'<>]+/gi;
+  for (const [candidate] of output.matchAll(candidates)) {
+    const absolute = /^[\\/]{2}/.test(candidate) ? `https:${candidate}` : /^www\./i.test(candidate) ? `https://${candidate}` : candidate;
+    let url: URL;
+    try {
+      // WHATWG parsing, as browsers do: a backslash becomes "/", so "evil.example<backslash>.northbank.example" has host evil.example.
+      url = new URL(absolute);
+    } catch {
+      return true;
+    }
+    if (url.protocol !== "https:" || url.username !== "" || url.password !== "") return true;
+    const host = url.hostname.replace(/\.$/, "");
+    if (!allowedDomains.some((domain) => host === domain || host.endsWith(`.${domain}`))) return true;
   }
   return false;
 }

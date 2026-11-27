@@ -29,7 +29,7 @@ export function canRead(principal: Principal, doc: SecuredDocument): Decision {
   const users = doc.acl?.users ?? [];
   const groups = doc.acl?.groups ?? [];
   if (users.length === 0 && groups.length === 0) return { allow: false, reason: "no-acl" };
-  const listed = users.includes(principal.userId) || groups.some((group) => principal.groups.includes(group));
+  const listed = (principal.userId !== "" && users.includes(principal.userId)) || groups.some((group) => principal.groups.includes(group));
   if (!listed) return { allow: false, reason: "not-listed" };
   const required = rank(doc.classification);
   const held = rank(principal.clearance);
@@ -43,6 +43,7 @@ function quote(value: string): string {
 
 export function buildSecurityFilter(principal: Principal): string {
   if (!principal.tenantId) throw new Error("principal has no tenant");
+  if (!principal.userId) throw new Error("principal has no user");
   if (rank(principal.clearance) === undefined) throw new Error(`unknown clearance ${principal.clearance}`);
   const grants = [`aclUsers/any(u: u eq ${quote(principal.userId)})`];
   for (const group of [...principal.groups].sort()) grants.push(`aclGroups/any(g: g eq ${quote(group)})`);

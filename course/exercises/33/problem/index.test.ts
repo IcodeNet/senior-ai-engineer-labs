@@ -5,6 +5,7 @@ import {
   CircuitBreaker,
   CircuitOpenError,
   HttpError,
+  isCallerError,
   isRetryable,
   retry,
   TimeoutError,
@@ -119,9 +120,28 @@ test("caller errors (4xx) do not open the circuit for everyone", async () => {
   clock = 1000;
   await assert.rejects(breaker.call(async () => { throw new HttpError(404); }), HttpError);
   assert.equal(breaker.state(), "closed", "a caller error on the half-open trial still proves the dependency is up");
+  assert.deepEqual([400, 401, 403, 404, 422].map((status) => isCallerError(new HttpError(status))), [true, true, true, true, true]);
+  assert.deepEqual([408, 429, 500, 503].map((status) => isCallerError(new HttpError(status))), [false, false, false, false]);
+  assert.equal(isCallerError(new TypeError("fetch failed")), false);
   const strict = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 1000, now: () => 0, isFailure: () => true });
   await assert.rejects(strict.call(async () => { throw new HttpError(400); }));
   assert.equal(strict.state(), "open");
+});
+
+test("network errors, resets and bugs count as failures, so a hard outage opens the circuit", async () => {
+  let clock = 0;
+  const breaker = new CircuitBreaker({ failureThreshold: 2, cooldownMs: 1000, now: () => clock });
+  let calls = 0;
+  const refused = async () => { calls++; throw new TypeError("fetch failed"); };
+  for (let i = 0; i < 10; i++) await assert.rejects(breaker.call(refused));
+  assert.equal(breaker.state(), "open");
+  assert.equal(calls, 2, "after two refused connections the breaker stops calling");
+  clock = 1000;
+  await assert.rejects(breaker.call(async () => { throw Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }); }));
+  assert.equal(breaker.state(), "open", "a reset on the half-open trial re-opens");
+  clock = 2000;
+  await assert.rejects(breaker.call(async () => { throw new TimeoutError(10); }), TimeoutError);
+  assert.equal(breaker.state(), "open");
 });
 
 test("fallbacks degrade gracefully and say so", async () => {

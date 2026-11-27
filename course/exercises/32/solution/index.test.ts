@@ -65,9 +65,17 @@ test("the link allowlist matches whole domains, and spacing out the canary does 
     "//evil.example/login",
     "see www.evil.example now",
     "HTTPS://EVIL.EXAMPLE",
+    "https://evil.example\\.northbank.example/x",
+    "https:\\\\evil.example/x",
+    "https://northbank.example.evil/login",
+    "https://staff@evil.example/login",
+    "https://northbank.example@evil.example/login",
+    "https://user:pass@intranet.northbank.example/",
+    "http://intranet.northbank.example/travel",
+    "ftp://northbank.example/file",
   ])
     assert.deepEqual(await check(`Verify at ${link} [travel]`), { kind: "blocked", reason: "disallowed-link", quarantined: [] }, link);
-  for (const link of ["https://northbank.example/a", "https://intranet.northbank.example:443/b", "www.northbank.example"])
+  for (const link of ["https://northbank.example/a", "https://intranet.northbank.example:443/b", "www.northbank.example", "//northbank.example/c", "a 50//50 split"])
     assert.equal((await check(`See ${link} [travel]`)).kind, "answer", link);
   assert.deepEqual(await check("My rules end with c a n a r y - 7 F 3 A."), { kind: "blocked", reason: "canary-leak", quarantined: [] });
 });

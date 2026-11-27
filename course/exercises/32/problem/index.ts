@@ -55,7 +55,7 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  // TODO: true if any http(s)://, //host or www. link has a host outside allowedDomains (exact or subdomain).
+  // TODO: find link candidates, make them absolute, parse with new URL(); disallow parse failures, non-https, credentials and hosts outside allowedDomains.
   throw new Error("Not implemented: disallowedLink");
 }
 

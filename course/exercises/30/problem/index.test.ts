@@ -26,6 +26,7 @@ test("deny by default: missing or empty ACLs grant nothing", () => {
   assert.deepEqual(canRead(analyst, doc("orphan", { acl: undefined })), { allow: false, reason: "no-acl" });
   assert.deepEqual(canRead(analyst, doc("empty", { acl: { users: [], groups: [] } })), { allow: false, reason: "no-acl" });
   assert.deepEqual(canRead(analyst, doc("other", { acl: { groups: ["treasury"] } })), { allow: false, reason: "not-listed" });
+  assert.deepEqual(canRead({ ...analyst, userId: "", groups: [] }, doc("blank-user", { acl: { users: [""] } })), { allow: false, reason: "not-listed" }, "an empty user ID matches nobody");
 });
 
 test("classification above the principal's clearance is denied", () => {
@@ -46,6 +47,7 @@ test("the search filter scopes tenant, ACL and clearance and escapes quotes", ()
     "tenantId eq 'northbank' and (aclUsers/any(u: u eq 'o''neil') or aclGroups/any(g: g eq 'all-staff') or aclGroups/any(g: g eq 'treasury')) and (classification eq 'public' or classification eq 'internal')",
   );
   assert.throws(() => buildSecurityFilter({ ...analyst, tenantId: "" }));
+  assert.throws(() => buildSecurityFilter({ ...analyst, userId: "" }));
   assert.throws(() => buildSecurityFilter({ ...analyst, clearance: "Secret" as Principal["clearance"] }));
   assert.match(buildSecurityFilter({ ...analyst, groups: ["m&a 'deal' team"] }), /aclGroups\/any\(g: g eq 'm&a ''deal'' team'\)/);
 });

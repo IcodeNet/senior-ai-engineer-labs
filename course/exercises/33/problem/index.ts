@@ -38,6 +38,12 @@ export async function withTimeout<T>(op: (signal: AbortSignal) => Promise<T>, ms
 
 const TRANSIENT = new Set([408, 429, 500, 502, 503, 504]);
 
+/** A real 4xx response that is the caller's fault (not 408 or 429): the dependency answered, so it is healthy. */
+export function isCallerError(error: unknown): boolean {
+  // TODO: HttpError with status 400-499 except 408 and 429.
+  throw new Error("Not implemented: isCallerError");
+}
+
 export function isRetryable(error: unknown): boolean {
   // TODO: TimeoutError, or HttpError with 408, 429, 500, 502, 503 or 504.
   throw new Error("Not implemented: isRetryable");
@@ -62,7 +68,7 @@ export class CircuitBreaker {
       failureThreshold: number;
       cooldownMs: number;
       now: () => number;
-      /** Which errors say the dependency is unhealthy. Default isRetryable: caller errors (4xx) do not count. */
+      /** Which errors say the dependency is unhealthy. Default: everything except caller errors (isCallerError). */
       isFailure?: (error: unknown) => boolean;
     },
   ) {}
@@ -73,8 +79,8 @@ export class CircuitBreaker {
   }
 
   async call<T>(op: () => Promise<T>): Promise<T> {
-    // TODO: fail fast when open; success or a non-failure error (isFailure, default isRetryable) resets and closes;
-    // a failure counts, and opens at the threshold or after a failed half-open trial.
+    // TODO: fail fast when open; success or a caller error (isFailure false; default: only isCallerError) resets and closes;
+    // any other error counts, and opens at the threshold or after a failed half-open trial.
     throw new Error("Not implemented: CircuitBreaker.call");
   }
 }

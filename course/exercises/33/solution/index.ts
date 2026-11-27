@@ -49,6 +49,11 @@ export async function withTimeout<T>(op: (signal: AbortSignal) => Promise<T>, ms
 
 const TRANSIENT = new Set([408, 429, 500, 502, 503, 504]);
 
+/** A real 4xx response that is the caller's fault (not 408 or 429): the dependency answered, so it is healthy. */
+export function isCallerError(error: unknown): boolean {
+  return error instanceof HttpError && error.status >= 400 && error.status < 500 && !TRANSIENT.has(error.status);
+}
+
 export function isRetryable(error: unknown): boolean {
   if (error instanceof TimeoutError) return true;
   return error instanceof HttpError && TRANSIENT.has(error.status);
@@ -80,7 +85,7 @@ export class CircuitBreaker {
       failureThreshold: number;
       cooldownMs: number;
       now: () => number;
-      /** Which errors say the dependency is unhealthy. Default isRetryable: caller errors (4xx) do not count. */
+      /** Which errors say the dependency is unhealthy. Default: everything except caller errors (isCallerError). */
       isFailure?: (error: unknown) => boolean;
     },
   ) {}
@@ -99,7 +104,8 @@ export class CircuitBreaker {
       this.openedAt = undefined;
       return value;
     } catch (error) {
-      if (!(this.options.isFailure ?? isRetryable)(error)) {
+      const isFailure = this.options.isFailure ?? ((e: unknown) => !isCallerError(e));
+      if (!isFailure(error)) {
         // The dependency answered; the request was bad. That is evidence of health, not of failure.
         this.failures = 0;
         this.openedAt = undefined;

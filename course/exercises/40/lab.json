@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Cost models: RAG vs fine-tuning vs long context",
+  "description": "Model fixed and variable cost per architecture, rank them at a volume and find break-even points.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

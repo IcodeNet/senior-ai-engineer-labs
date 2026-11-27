@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Latency budgets and P95 composition",
+  "description": "Compose end-to-end P95 from per-request traces with parallel stages, allocate a latency budget and report breaches.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

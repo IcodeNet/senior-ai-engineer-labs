@@ -48,8 +48,16 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 19 | Keyword, vector, hybrid and semantic search on Azure | Four query modes behind a backend approval filter |
 | 20 | Grounded answers with Azure OpenAI | Chat completions, content-filter handling, step 08 pipeline on real services |
 | 21 | Evaluate on Azure, then shut down | Mode comparison on the labelled set, then teardown and verification |
+| 38 | Capacity and token-throughput estimation | Tokens per request, peak TPM/RPM, Little's-law concurrency, deployments by binding limit |
+| 39 | Latency budgets and P95 composition | End-to-end P95 from traces with parallel stages, budget allocation, breach report |
+| 40 | Cost models: RAG vs fine-tuning vs long context | Fixed and variable cost per architecture, ranking by volume, break-even volume |
+| 41 | Choosing a retrieval strategy from requirements | Decision function with reranker, controls and reason codes |
+| 42 | SLOs and error budgets for AI features | Availability, latency and quality SLOs, error budgets, multi-window burn-rate paging |
+| 43 | Failure-mode and effects analysis for an AI pipeline | RPN scoring, severity override, residual risk after mitigations |
+| 44 | Build vs buy and model selection scorecards | Hard constraints, weighted min-max scores, weight sensitivity |
+| 45 | System-design review: find the missing controls | Residency, approval, audit, PII, injection, cost-cap and access-control checks, verdict |
 
-Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. All teaching happens in this course.
+Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. Steps 38–45 are **Lab 06, architecture and interview drills (local)**: each turns a senior design judgement (capacity, latency, cost, retrieval choice, SLOs, FMEA, model selection, design review) into a tested function, and each lesson adds a model answer outline to its interview question; they cost nothing. All teaching happens in this course.
 
 ## Lab 03 — real Azure (paid while running)
 

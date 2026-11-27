@@ -55,8 +55,9 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  // TODO: find bare and rendered link candidates, make them absolute, parse with new URL(); disallow parse failures,
-  // non-https schemes, credentials, non-default ports and hosts outside allowedDomains.
+  // TODO: find bare and rendered link candidates (inline, reference definitions, autolinks, whole URL attribute values),
+  // decode entities, trim, make them absolute, parse with new URL(); disallow parse failures, non-https schemes,
+  // credentials, non-default ports and hosts outside allowedDomains.
   throw new Error("Not implemented: disallowedLink");
 }
 

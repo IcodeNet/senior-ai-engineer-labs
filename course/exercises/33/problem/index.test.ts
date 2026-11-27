@@ -122,6 +122,9 @@ test("caller errors (4xx) do not open the circuit for everyone", async () => {
   assert.equal(breaker.state(), "closed", "a caller error on the half-open trial still proves the dependency is up");
   assert.deepEqual([400, 401, 403, 404, 422].map((status) => isCallerError(new HttpError(status))), [true, true, true, true, true]);
   assert.deepEqual([408, 429, 500, 503].map((status) => isCallerError(new HttpError(status))), [false, false, false, false]);
+  assert.deepEqual([399, 400, 499, 500].map((status) => isCallerError(new HttpError(status))), [false, true, true, false], "the caller-error range is exactly 400-499");
+  assert.equal(isCallerError(new HttpError(302)), false, "a redirect is not proof that the dependency is healthy");
+  assert.equal(isCallerError({ status: 400 }), false, "only an HttpError counts");
   assert.equal(isCallerError(new TypeError("fetch failed")), false);
   const strict = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 1000, now: () => 0, isFailure: () => true });
   await assert.rejects(strict.call(async () => { throw new HttpError(400); }));

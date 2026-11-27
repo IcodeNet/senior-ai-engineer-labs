@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Prompt-injection defences and a red-team harness",
+  "description": "Quarantine injected documents, check model output for leaks, and measure attack success rate with a red-team suite.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

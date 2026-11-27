@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Semantic caching with invalidation and safety",
+  "description": "Cache answers by meaning inside a security scope, expire them, and invalidate them when a cited document changes.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

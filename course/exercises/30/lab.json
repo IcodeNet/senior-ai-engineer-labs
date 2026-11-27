@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Tenant isolation and document ACLs",
+  "description": "Enforce tenant, document ACL and classification checks in retrieval, deny by default, in the search filter and again in code.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

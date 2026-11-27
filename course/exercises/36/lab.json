@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Observability: traces, token attributes and safe logs",
+  "description": "Record nested spans with latency and token attributes, summarise a trace, and write structured logs that never contain prompts or PII.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

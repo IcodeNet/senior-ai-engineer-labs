@@ -20,6 +20,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
 
 ## In progress
+- [ ] Course Lab 05 — production AI, steps 30–37: implemented and verified locally; awaiting CI and review on its pull request (entry dated 2026-11-27, Lab 05).
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
 
 ## Next actions
@@ -70,6 +71,12 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 - CI verified on `main` at `33dcf2e`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531684 — `course` job passed Azure lifecycle logic tests, Bicep compilation (no deployment), engine acceptance (21 steps, 42 variants, learner journey; live tests disabled) and browser acceptance (all 21 lessons). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531680: 93 changed paths, 0 findings.
 - Not verified: any live Azure run (no Azure CLI or subscription in the agent environment). The first `azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify` cycle must be run and recorded here.
 - No Azure resources provisioned by the agent.
+
+## Lab 05 production AI (2026-11-27)
+- Implemented on branch `lab-05-production-ai`: course steps 30–37 and module `lab-05-production-ai` in `course/course.json` — tenant isolation and document ACLs (30), PII detection and redaction (31), prompt-injection defences and red-team harness (32), timeouts/retries/circuit breaker/fallback (33), per-user rate limits and token budgets (34), semantic caching with invalidation (35), traces and safe structured logs (36), canary/shadow evaluation and rollback decisions (37). Synthetic financial-services data; no new dependencies.
+- Local evidence (agent session, not CI): `npm run typecheck` clean; `npm run validate` "Valid course: Senior AI Engineer Labs (29 steps)"; `npm test` "Acceptance passed: 29 steps, 58 variants, learner journey through engine 64f1fec" — every Lab 05 starter failed on `Not implemented` and every solution passed (51 tests: 6, 6, 6, 8, 6, 7, 5, 7). `pnpm --filter @labs/agent-factory test` 12 passed; a local factory review of the 65 changed paths reported 0 findings.
+- Not verified locally: browser acceptance (no Chromium in the agent sandbox). CI evidence: see the pull request for this branch; status stays **in progress** until CI passes on it and it is merged.
+- Steps 22–29 are reserved for Lab 04 and are not part of this change. No Azure resources provisioned.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

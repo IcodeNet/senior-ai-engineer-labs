@@ -18,6 +18,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [x] Review factory runs on every pull request and push to `main`, with course structure rules (CI evidence below).
 - [x] Repository reduced to the course and the review factory (entry dated 2026-11-27, restructure).
 - [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
+- [ ] Course Lab 06 — architecture and interview drills, steps 38–45: implemented on branch `lab-06-architecture-drills` (PR open, not merged; see entry dated 2026-11-27, Lab 06).
 
 ## In progress
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
@@ -70,6 +71,12 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 - CI verified on `main` at `33dcf2e`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531684 — `course` job passed Azure lifecycle logic tests, Bicep compilation (no deployment), engine acceptance (21 steps, 42 variants, learner journey; live tests disabled) and browser acceptance (all 21 lessons). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531680: 93 changed paths, 0 findings.
 - Not verified: any live Azure run (no Azure CLI or subscription in the agent environment). The first `azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify` cycle must be run and recorded here.
 - No Azure resources provisioned by the agent.
+
+## Lab 06 architecture and interview drills (2026-11-27)
+- Implemented on branch `lab-06-architecture-drills` (PR to `main`, not merged): course steps 38–45 as module `lab-06-architecture-drills` — capacity and token throughput (38), latency budgets and P95 composition (39), RAG vs fine-tune vs long-context cost models (40), retrieval strategy decision function with reason codes (41), availability/latency/quality SLOs with error budgets and burn-rate paging (42), FMEA scoring with severity override and residual risk (43), model-selection scorecard with hard constraints and weight sensitivity (44), design review for missing controls (45). Each lesson has an interview question and a model answer outline. Deterministic, synthetic data, placeholder prices and limits; no new dependencies; £0.
+- Local evidence (this session, not CI): `npm run typecheck` clean; `npm run validate` → "Valid course: Senior AI Engineer Labs (29 steps)"; `npm test` → "Acceptance passed: 29 steps, 58 variants, learner journey through engine 64f1fec" with every new starter failing all its tests (5, 5, 5, 7, 6, 5, 5, 6 = 44 tests) and every solution passing; `pnpm --filter @labs/agent-factory test` 12 passed; factory `review` over the 65 changed paths → 0 findings.
+- Not verified locally: browser acceptance (no Chromium in the agent sandbox); CI is the gate. Steps 22–37 are reserved for other labs being authored in parallel; the course has a numbering gap until they land.
+- No Azure resources provisioned.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

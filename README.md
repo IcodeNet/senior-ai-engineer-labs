@@ -11,7 +11,7 @@ The repository contains two things:
 
 ## The course
 
-Runs on your own machine (laptop or desktop). Labs 01 and 02 cost nothing: no cloud account or API key.
+Runs on your own machine (laptop or desktop). Labs 01, 02 and 06 cost nothing: no cloud account or API key.
 
 **Prerequisites:** Node.js 22.13 or later, Git.
 
@@ -28,6 +28,7 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 | 01 · Azure AI Search and RAG | 01–08 | Chunking with metadata, approval and revocation, BM25, vector search, hybrid search with RRF, grounded prompts and citations, retrieval metrics, RAG orchestration |
 | 02 · Evaluation engineering | 09–16 | Labelled datasets, evaluation harness, groundedness checks, LLM-as-judge, judge calibration, paired bootstrap, CI regression gates, cost and latency |
 | 03 · Real Azure (paid while running) | 17–21 | Real Azure AI Search index, Azure OpenAI embeddings, keyword/vector/hybrid/semantic search with approval filters, grounded answers, evaluation, then shutdown |
+| 06 · Architecture and interview drills | 38–45 | Capacity and token throughput, latency budgets and P95 composition, RAG vs fine-tune vs long-context cost, retrieval strategy decisions, SLOs and error budgets, FMEA, model selection scorecards with sensitivity, design review for missing controls |
 
 Labs 01 and 02 simulate models, judges and search with deterministic fakes, so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
 

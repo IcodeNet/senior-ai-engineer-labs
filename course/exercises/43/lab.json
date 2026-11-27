@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Failure-mode and effects analysis for an AI pipeline",
+  "description": "Score failure modes by RPN, let severity override, and recompute residual risk after mitigations.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

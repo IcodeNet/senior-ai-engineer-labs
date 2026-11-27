@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "System-design review: find the missing controls",
+  "description": "Check a structured architecture spec for residency, approval, audit, PII, injection, cost-cap and access-control gaps.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

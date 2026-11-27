@@ -23,22 +23,22 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --no-frozen-lockfile
-      - name: Collect changed paths (pull request)
+      - name: Collect changed paths (pull request; deleted files excluded)
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename' | jq -R -s 'split("\n") | map(select(length > 0))' > changed-paths.json
-      - name: Collect changed paths (push)
+        run: gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" --jq '.[] | select(.status != "removed") | .filename' | jq -R -s 'split("\n") | map(select(length > 0))' > changed-paths.json
+      - name: Collect changed paths (push; deleted files excluded)
         if: github.event_name == 'push'
         env:
           BEFORE: ${{ github.event.before }}
         run: |
           if git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            git diff --name-only "$BEFORE" "$GITHUB_SHA"
+            git diff --name-only --diff-filter=d "$BEFORE" "$GITHUB_SHA"
           else
-            git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA"
+            git diff-tree --no-commit-id --name-only --diff-filter=d -r "$GITHUB_SHA"
           fi | jq -R -s 'split("\n") | map(select(length > 0))' > changed-paths.json
       - run: pnpm --filter @labs/agent-factory review "$GITHUB_WORKSPACE/changed-paths.json" "$GITHUB_WORKSPACE"
       - uses: actions/upload-artifact@v4

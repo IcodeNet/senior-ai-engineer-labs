@@ -11,7 +11,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - run: pnpm install --no-frozen-lockfile
@@ -27,7 +27,7 @@ jobs:
         working-directory: course
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Set up course and pinned Icode engine

@@ -59,6 +59,12 @@ The Lab 01 README now specifies local provider architecture, an optional simulat
 - CI verified on `main` at `6ca91c0`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46048874925 — engine acceptance (16 steps, 32 variants, learner journey) and browser acceptance (all 16 lessons open; starter fails and edited playground passes in the UI; ports released).
 - Not implemented: real-model judging and measured results. No Azure resources provisioned.
 
+## Review factory on main (2026-11-27)
+- Changed: `agent-review.yml` now runs on pushes to `main` as well as pull requests (work was being committed straight to `main` and was never reviewed). Fixed the artifact path, which pointed at the repo root while the report is written to `agent-factory/`.
+- Added deterministic, report-only rules: engine pin changes, teaching code under `labs/`, and course structure (step registration, problem/solution parity, starter and solution stubs, Vitest runner, interview question).
+- Local evidence (not CI): 12 factory tests and typecheck passed; reviewing this repository's course reports no structural findings.
+- This is still a deterministic checker, not independent review; AGENTS.md's independent-review requirement is not met by it.
+
 ## Verification and constraints
 Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.
 

@@ -1,16 +1,21 @@
 name: Agent Factory Review
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches: [main]
 permissions:
   contents: read
   pull-requests: read
 jobs:
   report:
+    # Deterministic and report-only: findings are published, never enforced, until their precision is measured.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
@@ -18,14 +23,25 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --no-frozen-lockfile
-      - name: Collect changed paths
+      - name: Collect changed paths (pull request)
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename' | jq -R -s 'split("\n") | map(select(length > 0))' > changed-paths.json
-      - run: pnpm --filter @labs/agent-factory review "$GITHUB_WORKSPACE/changed-paths.json"
+      - name: Collect changed paths (push)
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            git diff --name-only "$BEFORE" "$GITHUB_SHA"
+          else
+            git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA"
+          fi | jq -R -s 'split("\n") | map(select(length > 0))' > changed-paths.json
+      - run: pnpm --filter @labs/agent-factory review "$GITHUB_WORKSPACE/changed-paths.json" "$GITHUB_WORKSPACE"
       - uses: actions/upload-artifact@v4
         with:
           name: agent-review-report
-          path: agent-review.json
+          path: agent-factory/agent-review.json

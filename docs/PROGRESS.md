@@ -62,7 +62,7 @@ The Lab 01 README now specifies local provider architecture, an optional simulat
 ## Review factory on main (2026-11-27)
 - Changed: `agent-review.yml` now runs on pushes to `main` as well as pull requests (work was being committed straight to `main` and was never reviewed). Fixed the artifact path, which pointed at the repo root while the report is written to `agent-factory/`.
 - Added deterministic, report-only rules: engine pin changes, teaching code under `labs/`, and course structure (step registration, problem/solution parity, starter and solution stubs, Vitest runner, interview question).
-- Local evidence (not CI): 12 factory tests and typecheck passed; reviewing this repository's course reports no structural findings.
+- CI verified on `main` at `f7c511c`: Agent Factory Review run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049398955 triggered by the push, reviewed 9 changed paths with 0 findings and published the `agent-review-report` artifact; CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049399001 passed `verify` (including the 12 factory tests) and `course`.
 - This is still a deterministic checker, not independent review; AGENTS.md's independent-review requirement is not met by it.
 
 ## Verification and constraints

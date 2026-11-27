@@ -61,12 +61,13 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 
 ## Restructure: course and factory only (2026-11-27)
 - Removed `apps/`, `packages/`, `labs/`, `.env.example` and `docs/SETUP.md`; workspace reduced to `agent-factory`. README rewritten to describe only the course and the review factory. ADR 0003 supersedes ADR 0001. AGENTS.md references updated (evidence and approval rules unchanged), with the user's explicit instruction.
-- Evidence: pending CI on the commit that makes this change.
+- CI verified on `main` at `b7c2691`: CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46060395738 (`verify`, `course`) and Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46060395760. Its `teach-through-icode` finding was a false positive from deleted files; fixed in `8a39f38`. Renovate configuration merged (PR #1); PRs #3 and #4 closed. Remote branches `phase0-verification`, `phase0-negative-policy-fixture`, `prototype/icode-workshop` and `renovate/configure` still exist: the agent session is not permitted to delete branches.
 
 ## Lab 03 real Azure (2026-11-27)
 - Decision: ADR 0004. Azure AI Search Basic + Azure OpenAI, one tagged resource group, keyless RBAC, typed confirmations, verified teardown.
 - Implemented: `course/azure/main.bicep`, `azure/config.json`, `icode/azure.mjs` (plan/up/status/down/verify), `icode/azure-lib.mjs` with tests, course steps 17–21 with offline and live tests.
 - Local evidence (this session, not CI): Bicep CLI 0.49.2 build and lint clean (7 resources); `test:tools` 6 tests passed; typecheck; validate (21 steps); engine acceptance 42 variants as expected with live tests skipped.
+- CI verified on `main` at `33dcf2e`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531684 — `course` job passed Azure lifecycle logic tests, Bicep compilation (no deployment), engine acceptance (21 steps, 42 variants, learner journey; live tests disabled) and browser acceptance (all 21 lessons). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531680: 93 changed paths, 0 findings.
 - Not verified: any live Azure run (no Azure CLI or subscription in the agent environment). The first `azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify` cycle must be run and recorded here.
 - No Azure resources provisioned by the agent.
 

@@ -1,79 +1,61 @@
 # Senior AI Engineer Labs
 
-A hands-on learning and portfolio repository for building **senior/principal-level AI engineering capability** through working labs, architectural decisions, interview drills and measurable evaluations.
+Hands-on labs for **senior AI engineers**, taught entirely through an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course. Every step pairs a short lesson and an interview question with a TypeScript exercise: a failing starter, tests, and a reference solution.
 
-## Goal
+The repository contains two things:
 
-Learn to design, implement, explain, test and operate production AI systems—not merely memorise terminology. Each lab connects concise theory to a working implementation and demonstrates trade-offs through tests and evaluations.
+| Folder | What it is |
+|---|---|
+| [`course/`](course/README.md) | The Icode Workshop course — lessons, exercises, tests and solutions |
+| [`agent-factory/`](agent-factory/README.md) | The review factory — automated, report-only review of every change |
 
-Azure AI Search and RAG are the **first lab**, not the whole programme.
+## The course
 
-## Learning tracks
+Runs on your own machine (laptop or desktop) at no cost: no cloud account, API key or paid service.
 
-- **Azure AI Search:** indexing, indexers, chunking, embeddings, metadata, BM25, vector search, hybrid search, RRF and semantic reranking.
-- **RAG engineering:** retrieval orchestration, context construction, citations, grounding and fallback behaviour.
-- **Evaluations:** labelled datasets, Recall@K, Precision@K, MRR, NDCG@K, groundedness, relevance, correctness and regression testing.
-- **Agent engineering:** tool calling, MCP, orchestration, multi-agent patterns and human oversight.
-- **Production AI:** access control, document approvals, prompt injection, observability, resilience, performance, cost and CI/CD.
-- **Architecture and interviews:** design trade-offs, failure scenarios, concise technical explanations and practical drills.
+**Prerequisites:** Node.js 22.13 or later, Git.
 
-## Intended stack
-
-- One shared **React + TypeScript** interface.
-- **Fastify + TypeScript** backend with testable orchestration services.
-- **Azure AI Search** for retrieval.
-- **Azure OpenAI / Microsoft Foundry** for inference and supported evaluations.
-- **Python** where appropriate for evaluation and ML experiments.
-- Automated tests and CI for repeatable validation.
-
-## First lab: Azure AI Search + RAG
-
-1. Ingest a small synthetic document collection; chunk, embed and index it.
-2. Add metadata such as `status`, `version` and `effectiveDate`.
-3. Make approval metadata filterable and apply `status eq 'approved'` in backend queries.
-4. Compare BM25, vector and hybrid search; explore semantic reranking.
-5. Have the Fastify orchestrator retrieve authorised chunks and supply them as labelled, untrusted context to the LLM.
-6. Return grounded answers and source citations to React.
-7. Evaluate retrieval with Recall@5, Precision@5 and NDCG@10.
-8. Evaluate generation separately for groundedness, relevance and correctness.
-9. Document security controls, failure modes and architectural decisions.
-
-**Important:** The backend enforces access and approval restrictions—not the LLM. Financial-services examples must use synthetic or publicly approved material.
-
-## Lab format
-
-Each lab should include:
-
-- Concise theory and key concepts
-- Architecture and trade-offs
-- Runnable implementation
-- Tests and evaluation results
-- Interview questions and model answers
-- Lessons learnt and follow-up improvements
-
-## Proposed repository layout
-
-```text
-apps/
-  web/                 # Shared React interface
-  api/                 # Fastify API and orchestration
-labs/
-  01-azure-ai-search-rag/
-  02-evaluation-engineering/
-  03-agent-orchestration/
-  04-mcp/
-docs/
-  architecture/
-  interview-drills/
-  learning-notes/
+```sh
+cd course
+npm run setup   # installs the pinned Icode engine and the course dependencies
+npm start       # opens the workshop at http://127.0.0.1:5173
 ```
 
-This is a proposed structure; code and folders will be added incrementally.
+Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progress are saved locally; **Reset** restores the starter.
 
-## Definition of done
+| Lab | Steps | Topics |
+|---|---|---|
+| 01 · Azure AI Search and RAG | 01–08 | Chunking with metadata, approval and revocation, BM25, vector search, hybrid search with RRF, grounded prompts and citations, retrieval metrics, RAG orchestration |
+| 02 · Evaluation engineering | 09–16 | Labelled datasets, evaluation harness, groundedness checks, LLM-as-judge, judge calibration, paired bootstrap, CI regression gates, cost and latency |
 
-A lab is complete when it runs locally, explains its design decisions, includes tests and appropriate evaluations, considers security and reliability, and provides an interview-ready explanation.
+Models, judges and search services are simulated with deterministic fakes, so every exercise is repeatable and free. Real Azure AI Search, real embeddings and real model calls are not part of the course yet; adding them requires a cost estimate and explicit approval first (see [`AGENTS.md`](AGENTS.md)).
 
-## Current status
+Details, verification commands and the authoring guide: [`course/README.md`](course/README.md).
 
-Lab 01 phases 1–2 (steps 01–08) and Lab 02 evaluation engineering (steps 09–16) are available as an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course in [`course/`](course/README.md): sixteen TypeScript steps from chunking to CI regression gates, run locally at no cost (`cd course && npm run setup && npm start`). All teaching happens in Icode Workshop. Azure integration, real model judging and measured results are still to come. Quality and performance claims will be made only after measurement.
+## The review factory
+
+A deterministic reviewer that runs on every pull request and every push to `main`. It checks changed paths (agent-rule changes, engine pin changes, teaching code outside the course) and the whole course structure (every step registered, identical tests in starter and solution, starters that fail on stubs, solutions without stubs, the Vitest runner, an interview question per lesson). It publishes a findings table in the job summary and an `agent-review.json` artifact.
+
+It is **report-only** and **not** an independent or AI reviewer: findings never fail a build until their precision has been measured. Rules and roadmap: [`agent-factory/README.md`](agent-factory/README.md).
+
+```sh
+pnpm install
+pnpm --filter @labs/agent-factory test
+```
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+- **verify** — installs the workspace and typechecks, tests and builds the review factory;
+- **course** — sets up the pinned engine, typechecks every exercise, validates the course, runs every starter (must fail) and solution (must pass) through the engine, checks the learner journey, and drives the real workshop UI in Chromium.
+
+`.github/workflows/agent-review.yml` runs the review factory.
+
+## Status
+
+Labs 01 and 02 are available locally and verified in CI. Not yet built: real cloud integrations, real model judging, measured results, and further labs (agent engineering, MCP, production AI). Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+
+## Rules for contributors and agents
+
+[`AGENTS.md`](AGENTS.md) holds the working rules, including evidence-first reporting and approval gates for cloud spend. Financial-services examples use synthetic data only.

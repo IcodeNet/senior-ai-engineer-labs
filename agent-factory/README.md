@@ -11,7 +11,7 @@ Changed-path rules (`src/policy.ts`):
 | `cloud-cleanup-review` | Infrastructure files under `infra/` changed |
 | `agent-policy-review` | `AGENTS.md` changed — human approval required |
 | `engine-pin-review` | `course/icode/engine.json` changed — the course CI job must pass on that commit |
-| `teach-through-icode` | Exercise or test code added under `labs/` — teaching belongs in the Icode course |
+| `teach-through-icode` | Exercise or test code added outside `course/` and `agent-factory/` — teaching belongs in the Icode course |
 
 Course structure rules (`src/course.ts`), checked on the whole `course/` tree independently of the course's own acceptance script:
 

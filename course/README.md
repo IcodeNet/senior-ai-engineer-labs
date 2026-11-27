@@ -44,7 +44,7 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 15 | Regression gates in CI | Floors, ceilings, tolerances, missing metrics, baseline ratchet |
 | 16 | Cost and latency accounting | Token cost, nearest-rank P50/P95, monthly projection, budget check |
 
-Steps 01–08 are **Lab 01, phases 1–2 (local)**; steps 09–16 are **Lab 02, evaluation engineering (local)**. Models, judges and retrievers are injected interfaces exercised with deterministic fakes. The course does not cover Azure AI Search itself, semantic reranking, real embeddings or real model calls; those belong to optional, cost-gated phases described in `labs/`. All teaching happens in this course; `labs/` holds specifications, infrastructure and results only.
+Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)**; steps 09–16 are **Lab 02, evaluation engineering (local)**. Models, judges and retrievers are injected interfaces exercised with deterministic fakes. The course does not cover Azure AI Search itself, semantic reranking, real embeddings or real model calls; those would be later, cost-gated additions that need a cost estimate and explicit approval before anything is provisioned. All teaching happens in this course.
 
 ## Verification
 

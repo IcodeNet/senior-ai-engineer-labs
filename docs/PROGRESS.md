@@ -6,40 +6,30 @@ Last updated: 2026-11-27
 Build an objective-driven, production-minded AI engineering learning platform and portfolio. Each lab connects theory, interview drills, runnable implementations, tests, evaluation and operational considerations.
 
 ## Confirmed decisions
-- pnpm monorepo with shared React/TypeScript UI and Fastify API.
-- Lab-specific orchestration stays inside each lab.
-- Begin with Azure AI Search and RAG.
-- Local-first development; Azure playground integration only when needed.
-- Lab 01 will use a provider abstraction with deterministic fixtures and evaluate an optional community Azure AI Search simulator; `azd`/Bicep are for real Azure deployment, not local emulation.
-- Document Azure costs before provisioning and require explicit approval for chargeable resources.
-- Use environment variables or appropriate identity credentials; never commit secrets.
-- Every cloud lab must provide scoped cleanup and post-cleanup verification.
+- Teach only through the Icode Workshop course in `course/`: native format, engine pinned by commit, TypeScript + Vitest exercises ([ADR 0002](architecture/0002-icode-workshop-course.md)).
+- The repository holds only the course and the review factory (`agent-factory/`) ([ADR 0003](architecture/0003-course-and-factory-only.md)). `AGENTS.md` and `docs/` stay until the course is ready for release.
+- Local, zero-cost exercises with deterministic fakes; any cloud integration requires a cost estimate and explicit approval first, with scoped cleanup and post-cleanup verification.
+- Use environment variables or identity credentials; never commit secrets.
 - Use synthetic or publicly approved financial-services examples.
-- Deliver labs as an Icode Workshop course in `course/`, native format, engine pinned by commit, TypeScript + Vitest exercises ([ADR 0002](architecture/0002-icode-workshop-course.md)).
 
 ## Completed
-- [x] Root README describing project mission, learning tracks and proposed structure.
-- [x] Lab 01 README specifying Azure AI Search/RAG topics, learning phases and cost/cleanup requirements.
-- [x] Root AGENTS.md with durable engineering and agent instructions.
-- [x] Project progress tracker established.
-- [x] Architecture decision record convention established.
+- [x] Course Lab 01 — Azure AI Search and RAG concepts, steps 01–08 (CI evidence below).
+- [x] Course Lab 02 — Evaluation engineering, steps 09–16 (CI evidence below).
+- [x] Review factory runs on every pull request and push to `main`, with course structure rules (CI evidence below).
+- [x] Repository reduced to the course and the review factory (entry dated 2026-11-27, restructure).
 
 ## In progress
-- [ ] Complete Phase 0 monorepo and factory MVP verification. Foundation files exist on origin and CI passed install, typecheck, test and build, but runtime smoke tests and PR-review behaviour remain unverified.
-- [ ] Lab 01 local-first slice: course steps 01–08 implemented in `course/` (see 2026-11-27 entry); Fastify provider abstraction, simulator evaluation and shared UI not started.
+- [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
 
 ## Next actions
-1. Close Phase 0 evidence checklist: https://github.com/IcodeNet/senior-ai-engineer-labs/issues/2. Verify runtime startup, real PR review, negative fixtures, security and independent review.
-2. Confirm origin files and lockfile, pin toolchain, and update factory verification checks.
-3. After Phase 0, build Lab 01 local fixtures, provider interface, approval/revocation filtering and deterministic evaluation tests; evaluate community simulator compatibility.
-4. Add Azure integration behind explicit configuration, with cost review and safe provisioning/cleanup scripts.
-5. Measure retrieval and generation quality; record reproducible results.
+1. Decide the next lab (agent engineering, MCP or production AI) and add it as course steps 17+.
+2. Measure the review factory's precision on real changes before letting any rule block a build.
+3. Independent review: AGENTS.md requires review the author did not perform; the deterministic factory does not meet that requirement.
+4. Optional, approval-gated: cloud steps (Azure AI Search, real model judging) with cost estimate, cleanup and verification.
 
 ## Open decisions
-- Exact Node.js and pnpm versions.
-- Which pinned community simulator version, if any, passes compatibility and maintenance checks; deterministic fixtures remain the CI baseline.
-- Azure subscription, region, resource SKUs, free-tier availability and cost budget (must be verified before cloud deployment).
-- Whether to use Azure CLI/Entra ID or API-key authentication for each service.
+- Release criteria for the course (which labs, which platforms verified).
+- Whether and when to add cloud-backed steps, and on which Azure subscription, region and budget.
 
 ## Planning change (2026-11-26)
 The Lab 01 README now specifies local provider architecture, an optional simulator evaluation, provider parity tests and `azd`/Bicep cloud deployment controls. **Documentation committed; no simulator integration or Lab 01 runtime implementation is claimed.**
@@ -65,8 +55,12 @@ The Lab 01 README now specifies local provider architecture, an optional simulat
 - CI verified on `main` at `f7c511c`: Agent Factory Review run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049398955 triggered by the push, reviewed 9 changed paths with 0 findings and published the `agent-review-report` artifact; CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049399001 passed `verify` (including the 12 factory tests) and `course`.
 - This is still a deterministic checker, not independent review; AGENTS.md's independent-review requirement is not met by it.
 
-## Verification and constraints
+## Phase 0 foundation (2026-11-26, superseded by ADR 0003)
 Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.
+
+## Restructure: course and factory only (2026-11-27)
+- Removed `apps/`, `packages/`, `labs/`, `.env.example` and `docs/SETUP.md`; workspace reduced to `agent-factory`. README rewritten to describe only the course and the review factory. ADR 0003 supersedes ADR 0001. AGENTS.md references updated (evidence and approval rules unchanged), with the user's explicit instruction.
+- Evidence: pending CI on the commit that makes this change.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

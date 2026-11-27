@@ -27,4 +27,4 @@ Implement `answerQuestion(question, options)` in `index.ts`:
 - otherwise return `{ kind: "answer", text, citations, dropped }`, where `citations` are the cited `Source`s in order of first citation.
 
 ## Going further
-Add per-stage timings and token counts, stream the answer, and expose the pipeline through the shared Fastify API (`apps/api`) with the provider selected by configuration.
+Add per-stage timings and token counts, stream the answer, and expose the pipeline behind an HTTP endpoint with the provider selected by configuration.

@@ -1,6 +1,6 @@
 # ADR 0001: Monorepo and lab boundaries
 
-- **Status:** Accepted (architecture direction; implementation pending)
+- **Status:** Superseded by [ADR 0003](0003-course-and-factory-only.md) (2026-11-27)
 - **Date:** 2026-11-26
 
 ## Context

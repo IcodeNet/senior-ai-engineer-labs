@@ -3,7 +3,6 @@ dist/
 coverage/
 .env
 .env.*
-!.env.example
 *.tsbuildinfo
 .pnpm-store/
 agent-factory/agent-review.json

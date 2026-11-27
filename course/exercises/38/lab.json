@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Capacity and token-throughput estimation",
+  "description": "Turn a RAG request profile and traffic forecast into peak tokens per minute, concurrency and the number of model deployments.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

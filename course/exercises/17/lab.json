@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Provision Azure and create a real index",
+  "description": "Create a governed Azure AI Search index with vector and semantic configuration on real Azure resources.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

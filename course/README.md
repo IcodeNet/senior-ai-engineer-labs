@@ -43,8 +43,40 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 14 | Is it really better? Paired bootstrap comparison | Seeded paired bootstrap confidence intervals and decisions |
 | 15 | Regression gates in CI | Floors, ceilings, tolerances, missing metrics, baseline ratchet |
 | 16 | Cost and latency accounting | Token cost, nearest-rank P50/P95, monthly projection, budget check |
+| 17 | Provision Azure and create a real index | Governed index schema with vector and semantic configuration |
+| 18 | Embed and index documents with Azure OpenAI | Batched embeddings, valid keys, `isLatest`, 207 partial-failure handling |
+| 19 | Keyword, vector, hybrid and semantic search on Azure | Four query modes behind a backend approval filter |
+| 20 | Grounded answers with Azure OpenAI | Chat completions, content-filter handling, step 08 pipeline on real services |
+| 21 | Evaluate on Azure, then shut down | Mode comparison on the labelled set, then teardown and verification |
 
-Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)**; steps 09–16 are **Lab 02, evaluation engineering (local)**. Models, judges and retrievers are injected interfaces exercised with deterministic fakes. The course does not cover Azure AI Search itself, semantic reranking, real embeddings or real model calls; those would be later, cost-gated additions that need a cost estimate and explicit approval before anything is provisioned. All teaching happens in this course.
+Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. All teaching happens in this course.
+
+## Lab 03 — real Azure (paid while running)
+
+Lab 03 creates billable Azure resources. You decide when they exist; `azure:down` removes them all.
+
+**Extra prerequisites:** an Azure subscription where you can create resource groups and role assignments, and the [Azure CLI](https://aka.ms/azure-cli) (`az login`).
+
+```sh
+npm run azure:plan     # checks your login, model availability and live list prices; creates nothing
+npm run azure:up       # shows what will be created, then requires you to type "create"
+npm run azure:status   # what is running and an estimate of the search cost so far
+npm run azure:down     # deletes the course resource group after you type its name
+npm run azure:verify   # confirms nothing from the course remains
+```
+
+| What `azure:up` creates | How it is charged |
+|---|---|
+| Azure AI Search, Basic tier, 1 search unit | Every hour it exists, whether or not you use it. `azure:plan` shows the current list price for your region. |
+| Semantic ranker, free plan | Monthly free allowance; beyond it, requests fail rather than being billed. |
+| Azure OpenAI (S0) with an embedding deployment (`text-embedding-3-small`) and a chat deployment (`gpt-5-mini`) | Per token only; the labs use a small number of tokens. |
+| Role assignments for you | Free. API keys are disabled; every call uses your Microsoft Entra ID token. |
+
+Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. `azure:down` refuses to delete a group without that tag, deletes the whole group, purges the soft-deleted Azure OpenAI account and removes `.azure/`; `azure:verify` then checks the subscription for anything left with the course tag. Deleting the resource group is what stops the charges — stopping the workshop or your computer does not. Budget alerts in Azure notify you; they do not stop spending.
+
+Region and models are set in `azure/config.json` (default `swedencentral`). `azure:plan` refuses models that your region does not offer or that retire within a week; change the config if it does. List prices come from the public Azure Retail Prices API and may differ from your agreement.
+
+Each Lab 03 step has **offline tests** (exact REST requests against a fake transport, always run) and **live tests** that run only when `.azure/env.json` exists. Course acceptance and CI never call Azure (`ICODE_AZURE_LIVE=0`).
 
 ## Verification
 
@@ -53,6 +85,7 @@ npm run typecheck     # strict TypeScript over every starter and solution
 npm run validate      # engine course validation
 npm test              # through the engine: every starter fails, every solution passes, learner journey
 npm run test:browser  # real UI in Chromium (needs: npx playwright install chromium)
+npm run test:tools    # Azure setup/shutdown decision logic, offline
 ```
 
 `npm test` writes `acceptance-results/icode.json`. CI (`course` job in `.github/workflows/ci.yml`) runs all of the above.

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Evaluate on Azure, then shut down",
+  "description": "Measure the four retrieval modes on real Azure with the labelled set, then remove every paid resource.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

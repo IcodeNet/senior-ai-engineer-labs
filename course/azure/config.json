@@ -1,0 +1,9 @@
+{
+  "region": "swedencentral",
+  "resourceGroupPrefix": "rg-saiel-course",
+  "courseTag": "senior-ai-engineer-labs",
+  "expiresAfterHours": 48,
+  "indexName": "policies",
+  "chatModel": { "deployment": "chat", "name": "gpt-5-mini", "version": "2025-08-07", "sku": "GlobalStandard", "capacity": 10 },
+  "embeddingModel": { "deployment": "embed", "name": "text-embedding-3-small", "version": "1", "sku": "GlobalStandard", "capacity": 10, "dimensions": 1536 }
+}

@@ -9,7 +9,7 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
-const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0" } });
 const closed = once(child, "close");
 let logs = "";
 for (const stream of [child.stdout, child.stderr]) stream.on("data", (x) => (logs = (logs + x).slice(-8000)));

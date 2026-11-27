@@ -2,3 +2,4 @@ node_modules/
 .workshop/
 .icode/
 acceptance-results/
+.azure/

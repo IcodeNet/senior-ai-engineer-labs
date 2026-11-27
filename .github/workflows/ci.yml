@@ -34,6 +34,10 @@ jobs:
         run: npm run setup
       - run: npm run doctor
       - run: npm run typecheck
+      - name: Azure lifecycle logic (offline)
+        run: npm run test:tools
+      - name: Compile Azure infrastructure (no deployment)
+        run: az bicep build --file azure/main.bicep --stdout > /dev/null
       - run: npm run validate
       - name: Engine acceptance (starters fail, solutions pass, learner journey)
         run: npm test

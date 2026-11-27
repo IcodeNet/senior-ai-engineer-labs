@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Keyword, vector, hybrid and semantic search on Azure",
+  "description": "Query Azure AI Search four ways, always behind a backend approval filter.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

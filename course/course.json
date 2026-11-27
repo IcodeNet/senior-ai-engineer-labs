@@ -89,6 +89,41 @@
           ]
         }
       ]
+    },
+    {
+      "id": "lab-03-real-azure",
+      "title": "Lab 03 \u00b7 Real Azure AI Search and RAG (paid, set up and shut down)",
+      "exercises": [
+        {
+          "id": "azure-indexing",
+          "title": "Provisioning and indexing",
+          "steps": [
+            "17",
+            "18"
+          ]
+        },
+        {
+          "id": "azure-retrieval",
+          "title": "Querying Azure AI Search",
+          "steps": [
+            "19"
+          ]
+        },
+        {
+          "id": "azure-generation",
+          "title": "Grounded answers",
+          "steps": [
+            "20"
+          ]
+        },
+        {
+          "id": "azure-evaluation",
+          "title": "Evaluation and shutdown",
+          "steps": [
+            "21"
+          ]
+        }
+      ]
     }
   ]
 }

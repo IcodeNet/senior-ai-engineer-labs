@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Embed and index documents with Azure OpenAI",
+  "description": "Generate real embeddings with Azure OpenAI and upload governed documents to Azure AI Search.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

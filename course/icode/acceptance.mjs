@@ -6,6 +6,8 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+// Acceptance never calls Azure: live tests in the real-Azure steps are disabled here.
+process.env.ICODE_AZURE_LIVE = "0";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const engine = resolve(root, process.env.ICODE_ENGINE_DIR || ".icode/engine");
 const load = (path) => import(pathToFileURL(join(engine, path)));

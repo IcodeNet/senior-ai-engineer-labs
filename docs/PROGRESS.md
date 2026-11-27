@@ -17,6 +17,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [x] Course Lab 02 — Evaluation engineering, steps 09–16 (CI evidence below).
 - [x] Review factory runs on every pull request and push to `main`, with course structure rules (CI evidence below).
 - [x] Repository reduced to the course and the review factory (entry dated 2026-11-27, restructure).
+- [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
 
 ## In progress
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
@@ -61,6 +62,13 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 ## Restructure: course and factory only (2026-11-27)
 - Removed `apps/`, `packages/`, `labs/`, `.env.example` and `docs/SETUP.md`; workspace reduced to `agent-factory`. README rewritten to describe only the course and the review factory. ADR 0003 supersedes ADR 0001. AGENTS.md references updated (evidence and approval rules unchanged), with the user's explicit instruction.
 - Evidence: pending CI on the commit that makes this change.
+
+## Lab 03 real Azure (2026-11-27)
+- Decision: ADR 0004. Azure AI Search Basic + Azure OpenAI, one tagged resource group, keyless RBAC, typed confirmations, verified teardown.
+- Implemented: `course/azure/main.bicep`, `azure/config.json`, `icode/azure.mjs` (plan/up/status/down/verify), `icode/azure-lib.mjs` with tests, course steps 17–21 with offline and live tests.
+- Local evidence (this session, not CI): Bicep CLI 0.49.2 build and lint clean (7 resources); `test:tools` 6 tests passed; typecheck; validate (21 steps); engine acceptance 42 variants as expected with live tests skipped.
+- Not verified: any live Azure run (no Azure CLI or subscription in the agent environment). The first `azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify` cycle must be run and recorded here.
+- No Azure resources provisioned by the agent.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

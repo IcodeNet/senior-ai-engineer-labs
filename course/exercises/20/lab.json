@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Grounded answers with Azure OpenAI",
+  "description": "Generate cited answers from approved Azure AI Search results with Azure OpenAI.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

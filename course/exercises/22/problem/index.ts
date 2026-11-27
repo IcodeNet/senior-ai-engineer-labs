@@ -35,8 +35,12 @@ export type ParsedToolCall =
 
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 
+/** Keys that can reach or replace an object's prototype; never accept them from a model. */
+export const RESERVED_KEYS = ["__proto__", "constructor", "prototype"];
+
 export function validateArgs(schema: JsonSchema, value: unknown, path = "$"): ValidationError[] {
   // TODO: check the type, then the keyword constraints; recurse into array items and object properties with a JSON path.
+  // Use Object.hasOwn, never `in`: `in` also sees inherited keys such as "constructor" and "toString".
   throw new Error("Not implemented: validateArgs");
 }
 

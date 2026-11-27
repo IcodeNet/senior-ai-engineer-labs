@@ -6,11 +6,14 @@ export type Impact = "read" | "write" | "irreversible";
 export interface ToolPolicy {
   name: string;
   impact: Impact;
-  /** For `write` tools: approval is needed when `args[field] >= amount`. Without it every write needs approval. */
-  approvalThreshold?: { field: string; amount: number };
+  /**
+   * For `write` tools: approval is needed when `args[field]`, plus what the same principal already spent with this
+   * tool inside `windowMs` (default 24 hours), reaches `amount`. Without a threshold every write needs approval.
+   */
+  approvalThreshold?: { field: string; amount: number; windowMs?: number };
 }
 
-export type RequestStatus = "pending" | "approved" | "rejected" | "expired" | "executed";
+export type RequestStatus = "pending" | "approved" | "rejected" | "expired" | "executed" | "failed";
 
 export interface ApprovalRequest {
   id: string;
@@ -25,7 +28,7 @@ export interface ApprovalRequest {
   reason?: string;
 }
 
-export type AuditEvent = "auto-executed" | "requested" | "approved" | "rejected" | "expired" | "executed";
+export type AuditEvent = "auto-executed" | "requested" | "approved" | "rejected" | "expired" | "executed" | "execution-failed";
 
 export interface AuditEntry {
   at: number;
@@ -48,20 +51,29 @@ export function argsHash(tool: string, args: Record<string, unknown>): string {
   return createHash("sha256").update(stableStringify({ tool, args })).digest("hex");
 }
 
-export function needsApproval(policy: ToolPolicy | undefined, args: Record<string, unknown>): boolean {
+/**
+ * The human accountable for an actor: "agent:alice" acts for "alice". Actor IDs must come from authentication,
+ * never from model output or tool arguments.
+ */
+export function principalOf(actor: string): string {
+  return actor.startsWith("agent:") ? actor.slice("agent:".length) : actor;
+}
+
+export function needsApproval(policy: ToolPolicy | undefined, args: Record<string, unknown>, alreadySpent = 0): boolean {
   if (!policy) return true;
   if (policy.impact === "read") return false;
   if (policy.impact === "irreversible") return true;
   if (!policy.approvalThreshold) return true;
   const value = args[policy.approvalThreshold.field];
   if (typeof value !== "number" || !Number.isFinite(value)) return true;
-  return value >= policy.approvalThreshold.amount;
+  return value + alreadySpent >= policy.approvalThreshold.amount;
 }
 
 export class ApprovalGate {
   private readonly requests = new Map<string, ApprovalRequest>();
   private readonly log: AuditEntry[] = [];
   private counter = 0;
+  private readonly spending: { at: number; tool: string; principal: string; amount: number }[] = [];
 
   constructor(private readonly options: GateOptions) {}
 
@@ -76,6 +88,22 @@ export class ApprovalGate {
 
   private record(event: AuditEvent, tool: string, actor: string, requestId?: string): void {
     this.log.push({ at: this.options.now(), event, tool, actor, ...(requestId ? { requestId } : {}) });
+  }
+
+  /** What `principal` spent through auto-executed calls of this tool inside the policy's window. */
+  private alreadySpent(policy: ToolPolicy | undefined, principal: string): number {
+    const threshold = policy?.approvalThreshold;
+    if (!threshold) return 0;
+    const since = this.options.now() - (threshold.windowMs ?? 24 * 60 * 60_000);
+    return this.spending
+      .filter((s) => s.tool === policy.name && s.principal === principal && s.at > since)
+      .reduce((total, s) => total + s.amount, 0);
+  }
+
+  private recordSpending(policy: ToolPolicy | undefined, principal: string, args: Record<string, unknown>): void {
+    const field = policy?.approvalThreshold?.field;
+    const amount = field === undefined ? undefined : args[field];
+    if (policy && typeof amount === "number") this.spending.push({ at: this.options.now(), tool: policy.name, principal, amount });
   }
 
   private find(requestId: string): ApprovalRequest {
@@ -93,8 +121,16 @@ export class ApprovalGate {
 
   async invoke(tool: string, args: Record<string, unknown>, requestedBy: string): Promise<InvokeResult> {
     const policy = this.options.policies.find((p) => p.name === tool);
-    if (!needsApproval(policy, args)) {
-      const result = await this.options.execute(tool, args);
+    const principal = principalOf(requestedBy);
+    if (!needsApproval(policy, args, this.alreadySpent(policy, principal))) {
+      let result: unknown;
+      try {
+        result = await this.options.execute(tool, args);
+      } catch (error) {
+        this.record("execution-failed", tool, requestedBy);
+        throw error;
+      }
+      this.recordSpending(policy, principal, args);
       this.record("auto-executed", tool, requestedBy);
       return { status: "executed", result };
     }
@@ -119,7 +155,8 @@ export class ApprovalGate {
     this.expireIfDue(request);
     if (request.status === "expired") throw new Error("request expired");
     if (request.status !== "pending") throw new Error(`request is ${request.status}`);
-    if (decision.approver === request.requestedBy) throw new Error("requester cannot approve their own request");
+    if (decision.approver.startsWith("agent:")) throw new Error("agents cannot approve requests");
+    if (principalOf(decision.approver) === principalOf(request.requestedBy)) throw new Error("requester cannot approve their own request");
     request.status = decision.approve ? "approved" : "rejected";
     request.decidedBy = decision.approver;
     if (decision.reason !== undefined) request.reason = decision.reason;
@@ -130,11 +167,19 @@ export class ApprovalGate {
   async executeApproved(requestId: string, args: Record<string, unknown>): Promise<unknown> {
     const request = this.find(requestId);
     this.expireIfDue(request);
+    if (request.status === "expired") throw new Error("request expired");
     if (request.status === "executed") throw new Error("request already executed");
     if (request.status !== "approved") throw new Error(`request is ${request.status}`);
     if (argsHash(request.tool, args) !== request.argsHash) throw new Error("arguments changed after approval");
-    request.status = "executed";
-    this.record("executed", request.tool, request.requestedBy, request.id);
-    return this.options.execute(request.tool, structuredClone(request.args));
+    request.status = "executed"; // consumed before the call, so a concurrent or repeated call cannot run it twice
+    try {
+      const result = await this.options.execute(request.tool, structuredClone(request.args));
+      this.record("executed", request.tool, request.requestedBy, request.id);
+      return result;
+    } catch (error) {
+      request.status = "failed";
+      this.record("execution-failed", request.tool, request.requestedBy, request.id);
+      throw error;
+    }
   }
 }

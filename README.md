@@ -65,7 +65,7 @@ pnpm --filter @labs/agent-factory test
 
 ## Status
 
-Labs 01 and 02 are verified in CI. Lab 03 is verified offline in CI (exact Azure requests, setup/shutdown logic, Bicep compilation); its live run against Azure has not yet been verified on a real subscription. Lab 04 (agents and MCP, steps 22–29) is verified locally through the engine; see its progress entry for CI status. Not yet built: real model judging in Lab 02, live-model agent runs, and a production-AI lab. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+Labs 01 and 02 are verified in CI. Lab 03 is verified offline in CI (exact Azure requests, setup/shutdown logic, Bicep compilation); its live run against Azure has not yet been verified on a real subscription. Lab 04 (agents and MCP, steps 22–29) is verified in CI on its pull request branch and not yet merged; see its progress entry. Not yet built: real model judging in Lab 02, live-model agent runs, and a production-AI lab. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
 
 ## Rules for contributors and agents
 

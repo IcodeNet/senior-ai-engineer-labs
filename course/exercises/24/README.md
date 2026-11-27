@@ -30,4 +30,6 @@ Implement in `index.ts` (`ToolError` and the types are provided):
 - `idempotent(toolName, runId, store, execute)` → a function `(args) => { value, replayed }`: if the store has the key, return its value with `replayed: true` without executing; otherwise call `execute(args, key)`, store `{ value }` **only on success**, and return `replayed: false`.
 
 ## Going further
+`stableStringify` is designed for arguments parsed from JSON: it does not handle `Date`, `Map`, `undefined` inside arrays (printed as `undefined`, where JSON uses `null`) or cyclic objects, so canonicalise non-JSON values before hashing. `Retry-After` is honoured without a cap here; in production cap it against the caller's deadline and give up instead of sleeping past it.
+
 Store a pending marker before executing so two concurrent calls with the same key cannot both run; expire keys; add a circuit breaker so a dead dependency fails fast; and record retries in your traces so you can see when a "fast" tool is slow because it is retrying.

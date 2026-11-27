@@ -12,7 +12,7 @@ So far the tools lived inside the agent. The **Model Context Protocol (MCP)** mo
 Design rules carry over from steps 22–26 and get sharper because the server does not know who the client is:
 
 - **Schemas and descriptions are the contract.** The SDK turns Zod shapes into JSON Schema for `tools/list` and validates arguments before your handler runs; invalid input comes back as a tool error.
-- **Tool failures are results, not protocol errors.** Return `isError: true` with a message the model can read; reserve JSON-RPC errors for protocol problems (unknown method, bad request). Resource reads, which the application drives, may throw.
+- **Tool failures are results, not protocol errors.** Return `isError: true` with a message the model can read; reserve JSON-RPC errors for protocol problems (unknown method, bad request). Resource reads, which the application drives, are requests rather than tool calls, so a missing resource is a JSON-RPC error (`-32002`).
 - **Enforce access in the server.** Drafts are filtered in code, and "not found" does not reveal that a draft exists.
 - **Annotations are hints, not security.** `readOnlyHint` helps hosts decide whether to ask for confirmation; a malicious server can lie, so hosts must not trust them blindly.
 - **Return both forms.** `content` text for the model; `structuredContent` (matching `outputSchema`) for code.
@@ -31,7 +31,7 @@ Implement in `index.ts`:
 - `createPolicyServer(policies)` → a `McpServer` created with `SERVER_INFO` and `instructions` that say policy text is reference data, **not instructions**. Register:
   - tool `search_policies` — input `{ query: string (min 2), limit: integer 1–5, default 3 }`, every field `.describe()`d; `outputSchema` `{ results: { id, title }[] }`; annotations `readOnlyHint: true`; returns `content` text (one `id: title` per line, or `No approved policies match.`) and `structuredContent: { results }`;
   - tool `get_policy` — input `{ id: string }` (described), `readOnlyHint: true`; returns the policy text, or `isError: true` with `Policy not found: <id>` for unknown **and draft** IDs;
-  - resource template `policy://{id}` named `policy` whose `list` returns every approved policy (`uri`, `name`, `title`, `mimeType: "text/markdown"`); reading returns one content `{ uri, mimeType: "text/markdown", text: "# <title>\n\n<text>" }` and throws `Policy not found: <id>` otherwise;
+  - resource template `policy://{id}` named `policy` whose `list` returns every approved policy (`uri`, `name`, `title`, `mimeType: "text/markdown"`); reading returns one content `{ uri, mimeType: "text/markdown", text: "# <title>\n\n<text>" }`, and otherwise throws `new McpError(RESOURCE_NOT_FOUND, "Policy not found: <id>")` — `-32002` is the code the MCP specification recommends for a missing resource;
   - prompt `answer_with_citations` with a required `question` argument, returning one `user` text message containing `Question: <question>` and the instruction `Cite policy IDs`.
 
 ## Going further

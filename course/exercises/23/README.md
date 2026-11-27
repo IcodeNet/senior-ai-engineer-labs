@@ -13,7 +13,7 @@ repeat:
 
 This is the reactive (ReAct-style) agent: the model decides the next action after seeing each observation. The loop is where reliability lives:
 
-- **Every call gets a result.** Unknown tools, invalid arguments and exceptions become `isError` tool messages, so the model can recover — and the tool never runs on arguments that failed validation (step 22).
+- **Every call gets a result.** Unknown tools, invalid arguments and exceptions become `isError` tool messages, so the model can recover — and the tool never runs on arguments that failed validation (step 22). This holds even when you stop: model APIs reject a transcript in which an assistant tool call has no matching tool message, so a run you might resume, summarise or hand to a human must answer the calls it did not execute ("Not executed: …").
 - **Budgets are mandatory.** Without a step limit and a tool-call budget, a confused model loops until your bill or timeout stops it. A step is one model call; stop *before* making a call you cannot afford.
 - **Loop detection.** Repeating the identical call is the commonest failure mode. Here an exact repeat stops the run; production agents may allow polling tools to repeat.
 - **The model sees definitions, not implementations.** Pass name, description and schema only.
@@ -33,9 +33,8 @@ Implement `runAgent(input, { model, tools, system, maxSteps = 8, maxToolCalls = 
 - each step calls `model({ messages, tools })` once, with a **copy** of the transcript and tool definitions containing only `name`, `description` and `inputSchema`;
 - a `final` turn → append `{ role: "assistant", content: text }` and stop with `stopReason: "final"` and `text`;
 - a `tool_calls` turn → append `{ role: "assistant", content: text ?? "", toolCalls: calls }`, then for each call in order:
-  - if an identical call (same name and same `arguments` string) already ran in this run → stop with `"repeated-call"`;
-  - if `maxToolCalls` calls already ran → stop with `"max-tool-calls"`;
-  - otherwise count it and append `{ role: "tool", toolCallId, name, content, isError }`: the `parseToolCall` message for an invalid call (the tool does not run); the result (strings as-is, anything else `JSON.stringify`) on success; `Tool error: <message>` if `run` throws;
+  - if an identical call (same name and same `arguments` string) already ran in this run → stop with `"repeated-call"`; if `maxToolCalls` calls already ran → stop with `"max-tool-calls"`. Before stopping, append an `isError` tool message for this call **and every later call in the turn**, with content `Not executed: repeated call` or `Not executed: tool-call budget exhausted`;
+  - otherwise count it and append `{ role: "tool", toolCallId, name, content, isError }`: the `parseToolCall` message for an invalid call (the tool does not run); the result (strings as-is, anything else `JSON.stringify`, with `undefined` sent as `null`) on success; `Tool error: <message>` if `run` throws;
 - after `maxSteps` model calls without a final answer → stop with `"max-steps"`;
 - return `{ stopReason, text, messages, steps, toolCalls }`; errors thrown by the model propagate.
 

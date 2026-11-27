@@ -46,7 +46,7 @@ test("plans are rejected before anything runs", () => {
 
 test("the reducer moves planning -> executing -> done", () => {
   let state: AgentState = transition(initialState, { type: "plan", plan: expensePlan }, 1);
-  assert.deepEqual(state, { status: "executing", plan: expensePlan, results: {}, replans: 0 });
+  assert.deepEqual(state, { status: "executing", plan: expensePlan, results: {}, replans: 0, completed: {} });
   state = transition(state, { type: "step-succeeded", stepId: "policy", result: "cap 40" }, 1);
   state = transition(state, { type: "step-succeeded", stepId: "fx", result: 40 }, 1);
   assert.equal(state.status, "executing");
@@ -57,7 +57,7 @@ test("the reducer moves planning -> executing -> done", () => {
 test("failures and rejected plans replan within the budget, then fail", () => {
   const executing = transition(initialState, { type: "plan", plan: expensePlan }, 1);
   const replanning = transition(executing, { type: "step-failed", stepId: "fx", error: "rates down" }, 1);
-  assert.deepEqual(replanning, { status: "planning", replans: 1, feedback: ["step fx failed: rates down"] });
+  assert.deepEqual(replanning, { status: "planning", replans: 1, feedback: ["step fx failed: rates down"], completed: {} });
   const executingAgain = transition(replanning, { type: "plan", plan: expensePlan }, 1);
   assert.equal(executingAgain.status === "executing" && executingAgain.replans, 1);
   assert.deepEqual(transition(executingAgain, { type: "step-failed", stepId: "fx", error: "rates down" }, 1), {
@@ -65,7 +65,7 @@ test("failures and rejected plans replan within the budget, then fail", () => {
     reason: "step fx failed: rates down",
   });
   assert.deepEqual(transition(initialState, { type: "plan-rejected", problems: ["plan is empty"] }, 0), { status: "failed", reason: "invalid plan: plan is empty" });
-  assert.deepEqual(transition(initialState, { type: "plan-rejected", problems: ["x", "y"] }, 2), { status: "planning", replans: 1, feedback: ["x", "y"] });
+  assert.deepEqual(transition(initialState, { type: "plan-rejected", problems: ["x", "y"] }, 2), { status: "planning", replans: 1, feedback: ["x", "y"], completed: {} });
 });
 
 test("the reducer is pure and rejects impossible transitions", () => {
@@ -127,6 +127,41 @@ test("a failing step stops the plan and replanning is bounded", async () => {
     },
   });
   assert.equal(plans, 2);
-  assert.deepEqual(executed, ["get_policy", "convert_currency", "get_policy", "convert_currency"], "submit never runs after fx fails");
+  assert.deepEqual(executed, ["get_policy", "convert_currency", "convert_currency"], "policy is not re-run; submit never runs after fx fails");
   assert.deepEqual(result.state, { status: "failed", reason: "step fx failed: rates down" });
+});
+
+test("completed steps survive a replan, so their side effects are not repeated", () => {
+  let state = transition(initialState, { type: "plan", plan: expensePlan }, 1);
+  state = transition(state, { type: "step-succeeded", stepId: "policy", result: "cap 40" }, 1);
+  state = transition(state, { type: "step-failed", stepId: "fx", error: "rates down" }, 1);
+  assert.deepEqual(state, {
+    status: "planning",
+    replans: 1,
+    feedback: ["step fx failed: rates down"],
+    completed: { policy: { tool: "get_policy", args: { topic: "meals" }, result: "cap 40" } },
+  });
+  const changed = [step("policy", "get_policy", [], { topic: "travel" }), ...expensePlan.slice(1)];
+  const replanned = transition(state, { type: "plan", plan: changed }, 1);
+  assert.equal(replanned.status === "executing" && Object.keys(replanned.results).length, 0, "same ID with different arguments must run again");
+  const same = transition(state, { type: "plan", plan: expensePlan }, 1);
+  assert.equal(same.status === "executing" && same.results.policy, "cap 40", "an identical completed step is reused");
+});
+
+test("runPlan never re-submits an expense when a later step fails and the plan is retried", async () => {
+  const plan: Plan = [...expensePlan, step("notify", "notify_manager", ["submit"], { claim: { $from: "submit" } })];
+  const executed: string[] = [];
+  let notifyAttempts = 0;
+  const result = await runPlan("Claim my dinner and tell my manager", {
+    planner: async () => plan,
+    toolNames: [...tools, "notify_manager"],
+    maxReplans: 1,
+    execute: async (tool, args) => {
+      executed.push(tool);
+      if (tool === "notify_manager" && ++notifyAttempts === 1) throw new Error("mail server busy");
+      return tool === "submit_expense" ? "clm-1" : tool === "notify_manager" ? `sent ${String(args.claim)}` : "ok";
+    },
+  });
+  assert.deepEqual(executed, ["get_policy", "convert_currency", "submit_expense", "notify_manager", "notify_manager"]);
+  assert.deepEqual(result.state, { status: "done", results: { policy: "ok", fx: "ok", submit: "clm-1", notify: "sent clm-1" } });
 });

@@ -74,7 +74,7 @@ test("a server that never stops paginating is cut off", async () => {
   assert.equal(n, 3);
 });
 
-test("tool errors are outcomes; protocol errors are thrown", async () => {
+test("tool errors are outcomes; JSON-RPC errors, which some servers still send, are thrown", async () => {
   const { transport, server } = fake((m, params) => {
     if (m === "initialize") return init();
     if (params?.name === "missing") return { error: { code: -32602, message: "Unknown tool: missing" } };
@@ -103,6 +103,17 @@ test("MCP tools become namespaced agent tools whose failures throw into the agen
   assert.equal(await agentTool.run({ id: "meals-01" }), "Dinners capped at 60 GBP.");
   assert.deepEqual(server.received.at(-1)?.params, { name: "get_policy", arguments: { id: "meals-01" } }, "the server sees its own tool name");
   await assert.rejects(agentTool.run({ id: "x" }), { message: "Policy not found" });
+  assert.throws(() => toAgentTools(session, [tool("x".repeat(60))], "policies"), { message: /^tool name not accepted by model APIs: policies__x+$/ });
+  assert.throws(() => toAgentTools(session, [tool("docs.search")], "kb"), { message: "tool name not accepted by model APIs: kb__docs.search" });
+});
+
+test("an empty-string cursor is a cursor, not the end of the list", async () => {
+  const { transport, server } = fake((m, params) => {
+    if (m === "initialize") return init();
+    return params && "cursor" in params ? { tools: [tool("b")] } : { tools: [tool("a")], nextCursor: "" };
+  });
+  assert.deepEqual((await listAllTools(await connect(transport))).map((t) => t.name), ["a", "b"]);
+  assert.deepEqual(server.received.filter((r) => r.method === "tools/list").map((r) => r.params), [{}, { cursor: "" }]);
 });
 
 test("interoperates with a real SDK server", async () => {
@@ -122,5 +133,8 @@ test("interoperates with a real SDK server", async () => {
   assert.deepEqual(tools.map((t) => t.name), ["convert_currency"]);
   assert.deepEqual(await callTool(session, "convert_currency", { amount: 50 }), { ok: true, text: "40 GBP" });
   const invalid = await callTool(session, "convert_currency", { amount: -5 });
-  assert.equal(invalid.ok, false, "the SDK reports argument validation failures as tool errors");
+  assert.equal(invalid.ok, false, "input validation failures are tool execution errors (MCP 2025-11-25)");
+  const unknown = await callTool(session, "nope", {});
+  assert.equal(unknown.ok, false, "SDK 1.32.2 also returns an unknown tool as an isError result");
+  assert.match(unknown.text, /nope not found/);
 });

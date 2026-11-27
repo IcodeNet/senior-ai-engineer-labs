@@ -1,5 +1,9 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+
+/** MCP's recommended JSON-RPC error code for a resource that does not exist. */
+export const RESOURCE_NOT_FOUND = -32002;
 
 export interface Policy {
   id: string;
@@ -81,7 +85,7 @@ export function createPolicyServer(policies: Policy[]): McpServer {
     { title: "Expense policy", description: "An approved expense policy as Markdown", mimeType: "text/markdown" },
     async (uri, { id }) => {
       const policy = approved(String(id));
-      if (!policy) throw new Error(`Policy not found: ${String(id)}`);
+      if (!policy) throw new McpError(RESOURCE_NOT_FOUND, `Policy not found: ${String(id)}`);
       return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: `# ${policy.title}\n\n${policy.text}` }] };
     },
   );

@@ -4,6 +4,9 @@ import { RpcConnection } from "./rpc.ts";
 export const CLIENT_INFO = { name: "lab-28-client", version: "1.0.0" };
 export const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18"];
 
+/** Tool names the major model APIs accept (step 22). MCP itself allows longer names and characters such as "." and "/". */
+export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+
 export type Capability = "tools" | "resources" | "prompts" | "logging" | "completions";
 
 export interface Session {

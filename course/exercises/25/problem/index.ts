@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 export interface PlanStep {
   id: string;
   tool: string;
@@ -8,9 +10,16 @@ export interface PlanStep {
 
 export type Plan = PlanStep[];
 
+/** A step that already ran (and so already had its side effects), kept across replans. */
+export interface CompletedStep {
+  tool: string;
+  args: Record<string, unknown>;
+  result: unknown;
+}
+
 export type AgentState =
-  | { status: "planning"; replans: number; feedback: string[] }
-  | { status: "executing"; plan: Plan; results: Record<string, unknown>; replans: number }
+  | { status: "planning"; replans: number; feedback: string[]; completed: Record<string, CompletedStep> }
+  | { status: "executing"; plan: Plan; results: Record<string, unknown>; replans: number; completed: Record<string, CompletedStep> }
   | { status: "done"; results: Record<string, unknown> }
   | { status: "failed"; reason: string };
 
@@ -31,11 +40,11 @@ export interface RunOptions {
   maxSteps?: number;
 }
 
-export const initialState: AgentState = { status: "planning", replans: 0, feedback: [] };
+export const initialState: AgentState = { status: "planning", replans: 0, feedback: [], completed: {} };
 
 /** Returns the step ID if `value` is a `{ "$from": "<stepId>" }` reference. */
 export function reference(value: unknown): string | undefined {
-  if (typeof value === "object" && value !== null && "$from" in value) {
+  if (typeof value === "object" && value !== null && Object.hasOwn(value, "$from")) {
     const from = (value as { $from: unknown }).$from;
     return typeof from === "string" ? from : undefined;
   }
@@ -53,7 +62,7 @@ export function validatePlan(plan: Plan, toolNames: string[], maxSteps = 6): str
 }
 
 export function transition(state: AgentState, event: AgentEvent, maxReplans: number): AgentState {
-  // TODO: a pure reducer; anything not allowed in the current state throws.
+  // TODO: a pure reducer; anything not allowed in the current state throws. Carry completed steps across replans.
   throw new Error("Not implemented: transition");
 }
 

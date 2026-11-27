@@ -1,6 +1,6 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { lintToolDefinition, parseToolCall, validateArgs, type ToolDefinition, type ValidationError } from "./index.ts";
+import { lintToolDefinition, parseToolCall, validateArgs, type JsonSchema, type ToolDefinition, type ValidationError } from "./index.ts";
 
 const submitExpense: ToolDefinition = {
   name: "submit_expense",
@@ -64,6 +64,21 @@ test("keyword constraints: enum, range, integer, length, pattern and array size"
   assert.deepEqual(sorted(validateArgs({ type: "number" }, Number.NaN)), ["$: expected number"]);
 });
 
+test("inherited and prototype-polluting keys cannot bypass the schema", () => {
+  const smuggled = JSON.parse('{"amount":5,"currency":"GBP","category":"meals","constructor":true,"toString":"x","__proto__":{"approve":true}}');
+  assert.deepEqual(sorted(validateArgs(submitExpense.inputSchema, smuggled)), [
+    "$.__proto__: reserved property name",
+    "$.constructor: reserved property name",
+    "$.toString: unexpected property",
+  ]);
+  const open = { type: "object" as const, properties: {}, additionalProperties: true };
+  assert.deepEqual(sorted(validateArgs(open, JSON.parse('{"__proto__":{"isAdmin":true}}'))), ["$.__proto__: reserved property name"], "reserved even when extra keys are allowed");
+  const needsToString = { type: "object" as const, properties: { toString: { type: "string" as const, description: "x" } }, required: ["toString"] };
+  assert.deepEqual(sorted(validateArgs(needsToString, {})), ["$.toString: required"], "an inherited key is not a present key");
+  const parsed = parseToolCall([submitExpense], { name: "submit_expense", arguments: '{"amount":5,"currency":"GBP","category":"meals","__proto__":{"approve":true}}' });
+  assert.equal(parsed.ok, false);
+});
+
 test("a valid call is parsed into a name and an arguments object", () => {
   assert.deepEqual(parseToolCall([submitExpense], { name: "submit_expense", arguments: '{"amount":12,"currency":"GBP","category":"meals"}' }), {
     ok: true,
@@ -99,16 +114,20 @@ test("a well-described tool passes the lint", () => {
 });
 
 test("the lint flags names, descriptions and schemas that confuse a model", () => {
+  const sloppyProperties: Record<string, JsonSchema> = { amount: { type: "number" } };
+  sloppyProperties["constructor"] = { type: "string", description: "x" };
   const sloppy: ToolDefinition = {
     name: "submit expense!",
     description: "Submit.",
-    inputSchema: { type: "object", properties: { amount: { type: "number" } }, required: ["amount", "currency"] },
+    inputSchema: { type: "object", properties: sloppyProperties, required: ["amount", "currency", "toString"] },
   };
   assert.deepEqual(lintToolDefinition(sloppy), [
     "name must match ^[a-zA-Z0-9_-]{1,64}$",
     "description is too short to guide the model",
     'required property "currency" is not defined',
+    'required property "toString" is not defined',
     'property "amount" has no description',
+    'property "constructor" uses a reserved name',
     "inputSchema should set additionalProperties: false",
   ]);
 });

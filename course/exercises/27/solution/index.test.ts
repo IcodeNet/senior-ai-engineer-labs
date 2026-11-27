@@ -95,7 +95,11 @@ test("approved policies are resources: listed via the template and readable as M
   assert.deepEqual(resources.map((r) => r.uri), ["policy://travel-01", "policy://meals-01", "policy://gifts-01"]);
   const read = await client.readResource({ uri: "policy://meals-01" });
   assert.deepEqual(read.contents, [{ uri: "policy://meals-01", mimeType: "text/markdown", text: `# Meals policy\n\n${policies[1].text}` }]);
-  await assert.rejects(client.readResource({ uri: "policy://travel-02" }), /Policy not found: travel-02/);
+  await assert.rejects(client.readResource({ uri: "policy://travel-02" }), (error: { code?: number; message?: string }) => {
+    assert.equal(error.code, -32002, "resource not found uses MCP's -32002, not a generic error");
+    assert.match(error.message ?? "", /Policy not found: travel-02/);
+    return true;
+  });
 });
 
 test("the prompt template embeds the question and asks for citations", async () => {

@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 export interface PlanStep {
   id: string;
   tool: string;
@@ -8,9 +10,16 @@ export interface PlanStep {
 
 export type Plan = PlanStep[];
 
+/** A step that already ran (and so already had its side effects), kept across replans. */
+export interface CompletedStep {
+  tool: string;
+  args: Record<string, unknown>;
+  result: unknown;
+}
+
 export type AgentState =
-  | { status: "planning"; replans: number; feedback: string[] }
-  | { status: "executing"; plan: Plan; results: Record<string, unknown>; replans: number }
+  | { status: "planning"; replans: number; feedback: string[]; completed: Record<string, CompletedStep> }
+  | { status: "executing"; plan: Plan; results: Record<string, unknown>; replans: number; completed: Record<string, CompletedStep> }
   | { status: "done"; results: Record<string, unknown> }
   | { status: "failed"; reason: string };
 
@@ -31,11 +40,11 @@ export interface RunOptions {
   maxSteps?: number;
 }
 
-export const initialState: AgentState = { status: "planning", replans: 0, feedback: [] };
+export const initialState: AgentState = { status: "planning", replans: 0, feedback: [], completed: {} };
 
 /** Returns the step ID if `value` is a `{ "$from": "<stepId>" }` reference. */
 export function reference(value: unknown): string | undefined {
-  if (typeof value === "object" && value !== null && "$from" in value) {
+  if (typeof value === "object" && value !== null && Object.hasOwn(value, "$from")) {
     const from = (value as { $from: unknown }).$from;
     return typeof from === "string" ? from : undefined;
   }
@@ -86,25 +95,35 @@ export function transition(state: AgentState, event: AgentEvent, maxReplans: num
   const invalid = (): never => {
     throw new Error(`invalid transition: ${event.type} while ${state.status}`);
   };
-  const replanOrFail = (replans: number, feedback: string[], reason: string): AgentState =>
-    replans < maxReplans ? { status: "planning", replans: replans + 1, feedback } : { status: "failed", reason };
+  const replanOrFail = (replans: number, feedback: string[], reason: string, completed: Record<string, CompletedStep>): AgentState =>
+    replans < maxReplans ? { status: "planning", replans: replans + 1, feedback, completed } : { status: "failed", reason };
 
   if (state.status === "planning") {
-    if (event.type === "plan") return { status: "executing", plan: event.plan, results: {}, replans: state.replans };
-    if (event.type === "plan-rejected") return replanOrFail(state.replans, event.problems, `invalid plan: ${event.problems.join("; ")}`);
+    if (event.type === "plan") {
+      const results: Record<string, unknown> = {};
+      for (const step of event.plan) {
+        const done = Object.hasOwn(state.completed, step.id) ? state.completed[step.id] : undefined;
+        if (done && done.tool === step.tool && isDeepStrictEqual(done.args, step.args)) results[step.id] = done.result;
+      }
+      if (event.plan.every((step) => Object.hasOwn(results, step.id))) return { status: "done", results };
+      return { status: "executing", plan: event.plan, results, replans: state.replans, completed: state.completed };
+    }
+    if (event.type === "plan-rejected")
+      return replanOrFail(state.replans, event.problems, `invalid plan: ${event.problems.join("; ")}`, state.completed);
     return invalid();
   }
   if (state.status === "executing") {
     if (event.type !== "step-succeeded" && event.type !== "step-failed") return invalid();
-    if (!state.plan.some((step) => step.id === event.stepId) || event.stepId in state.results)
-      throw new Error(`unknown or completed step: ${event.stepId}`);
+    const step = state.plan.find((candidate) => candidate.id === event.stepId);
+    if (!step || Object.hasOwn(state.results, event.stepId)) throw new Error(`unknown or completed step: ${event.stepId}`);
     if (event.type === "step-failed") {
       const message = `step ${event.stepId} failed: ${event.error}`;
-      return replanOrFail(state.replans, [message], message);
+      return replanOrFail(state.replans, [message], message, state.completed);
     }
     const results = { ...state.results, [event.stepId]: event.result };
-    if (state.plan.every((step) => step.id in results)) return { status: "done", results };
-    return { ...state, results };
+    const completed = { ...state.completed, [event.stepId]: { tool: step.tool, args: step.args, result: event.result } };
+    if (state.plan.every((candidate) => Object.hasOwn(results, candidate.id))) return { status: "done", results };
+    return { ...state, results, completed };
   }
   return invalid();
 }
@@ -129,6 +148,7 @@ export async function runPlan(goal: string, options: RunOptions): Promise<{ stat
     for (const id of executionOrder(executing.plan) ?? []) {
       const current: AgentState = state;
       if (current.status !== "executing") break;
+      if (Object.hasOwn(current.results, id)) continue; // already ran before a replan: do not repeat its side effects
       const step = executing.plan.find((candidate) => candidate.id === id)!;
       const args = Object.fromEntries(
         Object.entries(step.args).map(([key, value]) => {

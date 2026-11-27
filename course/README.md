@@ -90,8 +90,8 @@ Each Lab 03 step has **offline tests** (exact REST requests against a fake trans
 
 **Objective:** build a tool-using expenses assistant the way you would ship one — validated tool calls, a bounded loop, safe retries, explicit control flow, human approval for high-impact actions, MCP on both sides, and an evaluation suite that includes prompt injection through tool outputs.
 
-- **Prerequisites and setup:** the same as Labs 01–02 (`npm run setup`). The only extra dependency is the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` (pinned in `package.json`; it brings `zod`, which step 27 imports for tool schemas).
-- **Run and test:** open steps 22–29 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (7–10 tests per step).
+- **Prerequisites and setup:** the same as Labs 01–02 (`npm run setup`). Lab 04 adds two development dependencies, both pinned exactly in `package.json`: the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` 1.32.2, and `zod` 4.6.7, which steps 27 and 28 import directly for tool schemas (the SDK also depends on it; declaring it avoids relying on a transitive install). The SDK is not small: it adds 93 packages to `package-lock.json` (Express, Hono, Ajv, jose and others for its HTTP transports and auth), although the lab uses only its in-memory transport.
+- **Run and test:** open steps 22–29 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (8–11 tests per step).
 - **Cost:** £0. Models are scripted fakes; MCP servers and clients talk over the SDK's `InMemoryTransport` (no process, port or network). No cloud resources are created, so there is nothing to clean up or verify afterwards.
 - **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 29 are a teaching aid that paraphrased attacks will evade; step 28's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
 

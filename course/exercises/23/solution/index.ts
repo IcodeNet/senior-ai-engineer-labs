@@ -38,7 +38,7 @@ export interface AgentResult {
 }
 
 function toContent(result: unknown): string {
-  return typeof result === "string" ? result : JSON.stringify(result);
+  return typeof result === "string" ? result : JSON.stringify(result ?? null);
 }
 
 export async function runAgent(input: string, options: AgentOptions): Promise<AgentResult> {
@@ -61,10 +61,16 @@ export async function runAgent(input: string, options: AgentOptions): Promise<Ag
       return stop("final", turn.text);
     }
     messages.push({ role: "assistant", content: turn.text ?? "", toolCalls: turn.calls });
-    for (const call of turn.calls) {
+    for (const [index, call] of turn.calls.entries()) {
       const signature = `${call.name}\n${call.arguments}`;
-      if (seen.has(signature)) return stop("repeated-call");
-      if (toolCalls >= maxToolCalls) return stop("max-tool-calls");
+      const limit: StopReason | undefined = seen.has(signature) ? "repeated-call" : toolCalls >= maxToolCalls ? "max-tool-calls" : undefined;
+      if (limit) {
+        // Every call must get a result, or the transcript cannot be sent to a model again.
+        const reason = limit === "repeated-call" ? "Not executed: repeated call" : "Not executed: tool-call budget exhausted";
+        for (const skipped of turn.calls.slice(index))
+          messages.push({ role: "tool", toolCallId: skipped.id, name: skipped.name, content: reason, isError: true });
+        return stop(limit);
+      }
       seen.add(signature);
       toolCalls++;
       const reply = (content: string, isError: boolean): void => {

@@ -4,6 +4,9 @@ import { RpcConnection } from "./rpc.ts";
 export const CLIENT_INFO = { name: "lab-28-client", version: "1.0.0" };
 export const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18"];
 
+/** Tool names the major model APIs accept (step 22). MCP itself allows longer names and characters such as "." and "/". */
+export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+
 export type Capability = "tools" | "resources" | "prompts" | "logging" | "completions";
 
 export interface Session {
@@ -76,10 +79,10 @@ export async function listAllTools(session: Session, maxPages = 10): Promise<Mcp
   const tools: McpTool[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < maxPages; page++) {
-    const result = await session.rpc.request<{ tools: McpTool[]; nextCursor?: string }>("tools/list", cursor ? { cursor } : {});
+    const result = await session.rpc.request<{ tools: McpTool[]; nextCursor?: string }>("tools/list", cursor === undefined ? {} : { cursor });
     tools.push(...result.tools);
     cursor = result.nextCursor;
-    if (!cursor) return tools;
+    if (cursor === undefined) return tools; // cursors are opaque: "" is a valid cursor, only its absence ends the list
   }
   throw new Error(`more than ${maxPages} pages of tools`);
 }
@@ -98,14 +101,18 @@ export async function callTool(session: Session, name: string, args: Record<stri
 }
 
 export function toAgentTools(session: Session, tools: McpTool[], prefix: string): AgentTool[] {
-  return tools.map((tool) => ({
-    name: `${prefix}__${tool.name}`,
-    description: tool.description ?? "",
-    inputSchema: tool.inputSchema,
-    async run(args) {
-      const outcome = await callTool(session, tool.name, args);
-      if (!outcome.ok) throw new Error(outcome.text);
-      return outcome.text;
-    },
-  }));
+  return tools.map((tool) => {
+    const name = `${prefix}__${tool.name}`;
+    if (!TOOL_NAME.test(name)) throw new Error(`tool name not accepted by model APIs: ${name}`);
+    return {
+      name,
+      description: tool.description ?? "",
+      inputSchema: tool.inputSchema,
+      async run(args) {
+        const outcome = await callTool(session, tool.name, args);
+        if (!outcome.ok) throw new Error(outcome.text);
+        return outcome.text;
+      },
+    };
+  });
 }

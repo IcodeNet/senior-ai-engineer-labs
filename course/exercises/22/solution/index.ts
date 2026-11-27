@@ -35,6 +35,9 @@ export type ParsedToolCall =
 
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 
+/** Keys that can reach or replace an object's prototype; never accept them from a model. */
+export const RESERVED_KEYS = ["__proto__", "constructor", "prototype"];
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -75,12 +78,15 @@ export function validateArgs(schema: JsonSchema, value: unknown, path = "$"): Va
     case "object": {
       if (!isObject(value)) return fail("expected object");
       const errors: ValidationError[] = [];
-      for (const key of schema.required ?? []) if (!(key in value)) errors.push({ path: `${path}.${key}`, message: "required" });
+      for (const key of schema.required ?? [])
+        if (!Object.hasOwn(value, key)) errors.push({ path: `${path}.${key}`, message: "required" });
       for (const [key, child] of Object.entries(schema.properties))
-        if (key in value) errors.push(...validateArgs(child, value[key], `${path}.${key}`));
-      if (schema.additionalProperties === false)
-        for (const key of Object.keys(value))
-          if (!(key in schema.properties)) errors.push({ path: `${path}.${key}`, message: "unexpected property" });
+        if (Object.hasOwn(value, key)) errors.push(...validateArgs(child, value[key], `${path}.${key}`));
+      for (const key of Object.keys(value)) {
+        if (RESERVED_KEYS.includes(key)) errors.push({ path: `${path}.${key}`, message: "reserved property name" });
+        else if (schema.additionalProperties === false && !Object.hasOwn(schema.properties, key))
+          errors.push({ path: `${path}.${key}`, message: "unexpected property" });
+      }
       return errors;
     }
   }
@@ -120,9 +126,11 @@ export function lintToolDefinition(tool: ToolDefinition): string[] {
     return problems;
   }
   for (const key of tool.inputSchema.required ?? [])
-    if (!(key in tool.inputSchema.properties)) problems.push(`required property "${key}" is not defined`);
-  for (const [key, schema] of Object.entries(tool.inputSchema.properties))
+    if (!Object.hasOwn(tool.inputSchema.properties, key)) problems.push(`required property "${key}" is not defined`);
+  for (const [key, schema] of Object.entries(tool.inputSchema.properties)) {
+    if (RESERVED_KEYS.includes(key)) problems.push(`property "${key}" uses a reserved name`);
     if (!schema.description?.trim()) problems.push(`property "${key}" has no description`);
+  }
   if (tool.inputSchema.additionalProperties !== false) problems.push("inputSchema should set additionalProperties: false");
   return problems;
 }

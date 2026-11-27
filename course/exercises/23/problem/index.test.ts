@@ -36,6 +36,11 @@ function fxTool(): Tool & { calls: Record<string, unknown>[] } {
   };
 }
 
+function assertEveryCallAnswered(messages: Message[]): void {
+  const answered = new Set(messages.flatMap((m) => (m.role === "tool" ? [m.toolCallId] : [])));
+  for (const m of messages) if (m.role === "assistant") for (const c of m.toolCalls ?? []) assert.ok(answered.has(c.id), `call ${c.id} has no result`);
+}
+
 const call = (id: string, args: unknown, name = "convert_currency") => ({ id, name, arguments: JSON.stringify(args) });
 const options = (model: Model, tools: Tool[], extra = {}) => ({ model, tools, system: "You are an expenses assistant.", ...extra });
 
@@ -119,6 +124,7 @@ test("the step limit stops a model that never answers, without an extra model ca
   assert.equal(requests.length, 3);
   assert.equal(result.steps, 3);
   assert.equal(result.toolCalls, 3);
+  assertEveryCallAnswered(result.messages);
 });
 
 test("the tool-call budget caps fan-out within and across turns", async () => {
@@ -131,6 +137,8 @@ test("the tool-call budget caps fan-out within and across turns", async () => {
   assert.equal(result.stopReason, "max-tool-calls");
   assert.equal(fx.calls.length, 3);
   assert.equal(result.toolCalls, 3);
+  assert.deepEqual(result.messages.at(-1), { role: "tool", toolCallId: "b4", name: "convert_currency", content: "Not executed: tool-call budget exhausted", isError: true });
+  assertEveryCallAnswered(result.messages);
 });
 
 test("an identical repeated call stops the run instead of looping", async () => {
@@ -143,6 +151,15 @@ test("an identical repeated call stops the run instead of looping", async () => 
   const result = await runAgent("Convert 5 EUR", options(model, [fx]));
   assert.equal(result.stopReason, "repeated-call");
   assert.equal(fx.calls.length, 1);
+  assert.deepEqual(result.messages.at(-1), { role: "tool", toolCallId: "c2", name: "convert_currency", content: "Not executed: repeated call", isError: true });
+  assertEveryCallAnswered(result.messages);
+});
+
+test("a tool that returns nothing produces the content null, not undefined", async () => {
+  const silent: Tool = { ...fxTool(), run: async () => undefined };
+  const { model } = scripted([{ type: "tool_calls", calls: [call("c1", { amount: 1, from: "EUR", to: "GBP" })] }, { type: "final", text: "done" }]);
+  const result = await runAgent("x", options(model, [silent]));
+  assert.equal(result.messages[3].role === "tool" && result.messages[3].content, "null");
 });
 
 test("model failures are not swallowed", async () => {

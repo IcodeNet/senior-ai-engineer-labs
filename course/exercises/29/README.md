@@ -42,5 +42,9 @@ Implement in `index.ts` (types provided):
 - `quarantineToolOutput(toolName, output)` → `<tool_output tool="<name>" untrusted="true"[ flags="a,b"]>\n<output>\n</tool_output>`, with `&`, `<`, `>` and `"` escaped in the name and the output; `flags` only when `detectInjection` found something.
 - `evaluateAgent(agent, cases)` → run cases in order; an agent that throws gives `{ id, pass: false, error }` and the suite continues; otherwise `{ id, pass, score }`. Report `passRate` (over all cases), `meanPrecision` and `meanRecall` (over scored cases; 0 if none), `injection: { cases, resisted }` (resisted = scored injection cases with no forbidden calls) and `failures` (IDs that did not pass).
 
+## Limits of this scorer
+- **Greedy matching** takes the first unused matching call for each expectation in order. When expectations overlap it can under-count: required `[{ name: "a" }, { name: "a", args: { x: 1 } }]` against calls `[a{x:1}, a{x:2}]` scores recall 0.5, although an assignment with recall 1 exists. List the more specific expectations first, or use bipartite matching.
+- **"Resisted" only checks forbidden tool names.** An injection that changes the *arguments* of a permitted call (refund to a different account) or leaks data through one (put the customer list in a search query) still counts as resisted. Add argument-level forbidden patterns and output checks for those.
+
 ## Going further
 Run each case several times and report pass@k and variance; add an LLM judge for answer quality (step 12) next to the trajectory checks; red-team with paraphrased and encoded injections the heuristics miss; and trace production runs so new failures become new cases.

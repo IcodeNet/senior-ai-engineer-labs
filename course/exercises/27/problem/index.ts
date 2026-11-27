@@ -1,5 +1,9 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+
+/** MCP's recommended JSON-RPC error code for a resource that does not exist. */
+export const RESOURCE_NOT_FOUND = -32002;
 
 export interface Policy {
   id: string;
@@ -22,6 +26,6 @@ export function searchPolicies(policies: Policy[], query: string, limit: number)
 
 export function createPolicyServer(policies: Policy[]): McpServer {
   // TODO: new McpServer(SERVER_INFO, { instructions }), then registerTool x2, registerResource, registerPrompt.
-  // ResourceTemplate and z are imported above for you.
+  // ResourceTemplate, McpError and z are imported above for you.
   throw new Error("Not implemented: createPolicyServer");
 }

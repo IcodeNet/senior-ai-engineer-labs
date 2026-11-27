@@ -1,0 +1,24 @@
+{
+  "name": "senior-ai-engineer-labs-course",
+  "private": true,
+  "type": "module",
+  "description": "Icode Workshop course for senior-ai-engineer-labs.",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "setup": "node icode/run.mjs setup",
+    "doctor": "node icode/run.mjs doctor",
+    "start": "node icode/run.mjs start",
+    "validate": "node icode/run.mjs validate",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node icode/acceptance.mjs",
+    "test:browser": "node icode/browser.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

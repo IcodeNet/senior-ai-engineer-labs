@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Chunking with governance metadata",
+  "description": "Split source documents into overlapping chunks that carry the approval metadata retrieval depends on.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Approved, current documents only",
+  "description": "Enforce approval, effective dates, versioning and revocation in the backend before anything reaches the model.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

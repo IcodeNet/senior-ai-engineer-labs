@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Vector retrieval with cosine similarity",
+  "description": "Rank chunks by embedding similarity and see vector search find matches that share no keywords with the query.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

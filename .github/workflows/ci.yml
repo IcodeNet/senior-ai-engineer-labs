@@ -18,3 +18,32 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+  course:
+    # Icode Workshop course: runs every lesson through the pinned engine, then the real UI in Chromium.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: course
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up course and pinned Icode engine
+        run: npm run setup
+      - run: npm run doctor
+      - run: npm run typecheck
+      - run: npm run validate
+      - name: Engine acceptance (starters fail, solutions pass, learner journey)
+        run: npm test
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance
+        run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: course-acceptance
+          path: course/acceptance-results/
+          if-no-files-found: warn

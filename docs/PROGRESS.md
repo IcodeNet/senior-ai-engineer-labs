@@ -1,6 +1,6 @@
 # Project Progress
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
 
 ## Mission
 Build an objective-driven, production-minded AI engineering learning platform and portfolio. Each lab connects theory, interview drills, runnable implementations, tests, evaluation and operational considerations.
@@ -15,6 +15,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - Use environment variables or appropriate identity credentials; never commit secrets.
 - Every cloud lab must provide scoped cleanup and post-cleanup verification.
 - Use synthetic or publicly approved financial-services examples.
+- Deliver labs as an Icode Workshop course in `course/`, native format, engine pinned by commit, TypeScript + Vitest exercises ([ADR 0002](architecture/0002-icode-workshop-course.md)).
 
 ## Completed
 - [x] Root README describing project mission, learning tracks and proposed structure.
@@ -25,7 +26,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 
 ## In progress
 - [ ] Complete Phase 0 monorepo and factory MVP verification. Foundation files exist on origin and CI passed install, typecheck, test and build, but runtime smoke tests and PR-review behaviour remain unverified.
-- [ ] Design the runnable Lab 01 local-first vertical slice.
+- [ ] Lab 01 local-first slice: course steps 01–08 implemented in `course/` (see 2026-11-27 entry); Fastify provider abstraction, simulator evaluation and shared UI not started.
 
 ## Next actions
 1. Close Phase 0 evidence checklist: https://github.com/IcodeNet/senior-ai-engineer-labs/issues/2. Verify runtime startup, real PR review, negative fixtures, security and independent review.
@@ -42,6 +43,13 @@ Build an objective-driven, production-minded AI engineering learning platform an
 
 ## Planning change (2026-11-26)
 The Lab 01 README now specifies local provider architecture, an optional simulator evaluation, provider parity tests and `azd`/Bicep cloud deployment controls. **Documentation committed; no simulator integration or Lab 01 runtime implementation is claimed.**
+
+## Icode Workshop course (2026-11-27)
+- Implemented: `course/` with eight Lab 01 steps (chunking, approval/revocation, BM25, vector search, RRF, grounded prompts/citations, retrieval metrics, RAG orchestration). Each has a lesson, interview question, failing starter, Vitest tests and solution.
+- Engine: IcodeNet/Icode-workshop pinned at `64f1fec` (main after merging PR #4).
+- Local evidence (this session, not CI): `npm run setup`, `doctor`, `typecheck`, `validate` and `npm test` passed — 8 starters failed on unimplemented code, 8 solutions passed, learner journey (edit, reset, restore, progress, persistence) passed through the engine, twice.
+- Not verified locally: browser acceptance (`npm run test:browser`); Chromium could not be installed in the sandbox. CI `course` job is the gate.
+- No Azure resources provisioned.
 
 ## Verification and constraints
 Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.

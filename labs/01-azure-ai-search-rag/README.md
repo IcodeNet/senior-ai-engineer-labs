@@ -9,7 +9,9 @@ Learn to design, build, evaluate and explain a production-minded retrieval and R
 Study indexing, ingestion, chunking, embeddings, index schemas, approval metadata, BM25, vector search, hybrid search, RRF and semantic reranking. Answer scenario-based questions before implementation; record gaps and architectural trade-offs.
 
 ### Phase 2 — Local implementation (no Azure cost)
-Use TypeScript, Fastify and Vitest to implement retrieval interfaces, synthetic documents, approval filtering, context assembly, citation handling and evaluation metrics. Use mocks or fixtures; no cloud credentials are needed. Implement a provider abstraction so the same Fastify application can select a deterministic in-memory provider, an optional community simulator, or managed Azure AI Search. The shared React UI can exercise the lab through the Fastify API.
+Use TypeScript, Fastify and Vitest to implement retrieval interfaces, synthetic documents, approval filtering, context assembly, citation handling and evaluation metrics. Use mocks or fixtures; no cloud credentials are needed.
+
+**Interactive course:** phases 1–2 are delivered as eight graded steps in the Icode Workshop course in [`course/`](../../course/README.md) (chunking, approval/revocation, BM25, vector search, RRF, grounded prompts and citations, retrieval metrics, RAG orchestration). Each step has a lesson, an interview question, a failing TypeScript starter, Vitest tests and a reference solution. Run `npm run setup && npm start` in `course/`. The Fastify provider abstraction, simulator evaluation and shared UI integration below are not yet implemented. Implement a provider abstraction so the same Fastify application can select a deterministic in-memory provider, an optional community simulator, or managed Azure AI Search. The shared React UI can exercise the lab through the Fastify API.
 
 #### Local Azure AI Search simulator evaluation (planned, not yet implemented)
 - There is **no official full-featured Microsoft Azure AI Search local emulator** comparable to the Cosmos DB Emulator. `azd` provisions and manages Azure resources; it does not emulate Azure AI Search.
@@ -75,4 +77,4 @@ Start with K=5, then compare K=10 and K=20 when useful. For every topic: intervi
 ## Definition of done
 The lab runs locally, has repeatable tests and evaluation results, documents its Azure requirements and costs, protects credentials, includes cleanup for every chargeable resource, and can be explained at senior AI engineering interview level.
 
-**Status:** Specification only. Infrastructure, application code and cleanup automation must be implemented and verified before this lab can be described as complete.
+**Status:** In progress. Phases 1–2 exist as the local Icode course in `course/` (steps 01–08), verified by the `course` CI job. The Fastify provider abstraction, simulator evaluation, Azure integration, measurements and cleanup automation are not implemented; the lab is not complete.

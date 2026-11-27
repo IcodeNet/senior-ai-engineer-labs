@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Grounded prompts, citations and abstention",
+  "description": "Assemble retrieved chunks into a prompt that keeps instructions separate from untrusted content, cites sources and abstains without evidence.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

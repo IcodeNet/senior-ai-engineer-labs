@@ -76,4 +76,4 @@ A lab is complete when it runs locally, explains its design decisions, includes 
 
 ## Current status
 
-Initial planning. The first milestone is an approved-document retrieval pipeline and deterministic RAG application. Quality and performance claims will be made only after measurement.
+Lab 01 phases 1–2 are available as an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course in [`course/`](course/README.md): eight TypeScript steps from chunking to RAG orchestration, run locally at no cost (`cd course && npm run setup && npm start`). Azure integration, the shared Fastify/React application and measured results are still to come. Quality and performance claims will be made only after measurement.

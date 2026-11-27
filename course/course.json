@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "title": "Senior AI Engineer Labs",
+  "modules": [
+    {
+      "id": "lab-01-azure-ai-search-rag",
+      "title": "Lab 01 · Azure AI Search and RAG (local)",
+      "exercises": [
+        { "id": "indexing", "title": "Indexing and governance", "steps": ["01", "02"] },
+        { "id": "retrieval", "title": "Lexical, vector and hybrid retrieval", "steps": ["03", "04", "05"] },
+        { "id": "grounding", "title": "Grounded generation", "steps": ["06"] },
+        { "id": "evaluation", "title": "Retrieval evaluation", "steps": ["07"] },
+        { "id": "orchestration", "title": "RAG orchestration", "steps": ["08"] }
+      ]
+    }
+  ]
+}

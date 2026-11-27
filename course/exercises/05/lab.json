@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Hybrid retrieval with Reciprocal Rank Fusion",
+  "description": "Fuse lexical and vector rankings with RRF, the method Azure AI Search uses for hybrid queries.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

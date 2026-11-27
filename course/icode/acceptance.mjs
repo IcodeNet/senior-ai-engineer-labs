@@ -79,6 +79,8 @@ await selectWorkspace(root, steps[1].id);
 await selectWorkspace(root, id);
 assert.equal(await readProjectFile(root, id, entry), solution, "playground must persist across lesson switches");
 await updateProgress(root, id, false);
+await replaceWorkspace(root, id); // leave the authored starter for anything that runs next (e.g. browser acceptance)
+assert.equal(await readProjectFile(root, id, entry), starter, "journey must leave the starter in place");
 
 assert.deepEqual(await authoredHashes(), before, "authored exercise sources must not change");
 

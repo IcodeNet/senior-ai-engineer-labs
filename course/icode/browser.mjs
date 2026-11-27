@@ -68,7 +68,8 @@ try {
   const runTests = page.getByRole("button", { name: "Run tests", exact: true });
   await until(() => runTests.isEnabled(), "Run tests must become available");
   await runTests.click();
-  await until(async () => /^FAIL/.test((await status.textContent()) ?? ""), "starter must fail in the browser");
+  await until(async () => /^(PASS|FAIL)/.test((await status.textContent()) ?? ""), "tests must finish in the browser");
+  assert.match((await status.textContent()) ?? "", /^FAIL[\s\S]*Not implemented/, "starter must fail on unimplemented code in the browser");
   evidence.push("Starter fails when tests run from the UI");
 
   const editor = page.getByRole("textbox", { name: "Playground code editor" });
@@ -82,7 +83,9 @@ try {
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await until(async () => (await readFile(join(root, ".workshop/playgrounds/01/index.ts"), "utf8")).includes("chunks.push"), "save must write the playground file");
   await runTests.click();
-  await until(async () => /^PASS/.test((await status.textContent()) ?? ""), "edited playground must pass in the browser");
+  await until(async () => !/^FAIL/.test((await status.textContent()) ?? ""), "the second run must replace the earlier output");
+  await until(async () => /^(PASS|FAIL)/.test((await status.textContent()) ?? ""), "tests must finish again in the browser");
+  assert.match((await status.textContent()) ?? "", /^PASS/, "edited playground must pass in the browser");
   evidence.push("Editing and saving in the browser turns the failing playground into a passing one");
   await page.screenshot({ path: join(root, "acceptance-results/course.png"), fullPage: true });
 } finally {

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Agent evaluation and prompt injection through tool outputs",
+  "description": "Score agent trajectories for tool-use accuracy, order, budget and forbidden actions, quarantine tool output, and prove with an evaluation suite that planted instructions are not obeyed.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

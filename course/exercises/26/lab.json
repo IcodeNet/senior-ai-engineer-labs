@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Human-in-the-loop approval for high-impact tools",
+  "description": "Gate irreversible and high-value tool calls behind an approval that is bound to the exact arguments, four-eyes, time-limited, single-use and audited.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

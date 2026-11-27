@@ -124,6 +124,44 @@
           ]
         }
       ]
+    },
+    {
+      "id": "lab-04-agents-mcp",
+      "title": "Lab 04 \u00b7 Agent engineering and MCP (local)",
+      "exercises": [
+        {
+          "id": "agent-tools",
+          "title": "Tools and the agent loop",
+          "steps": [
+            "22",
+            "23",
+            "24"
+          ]
+        },
+        {
+          "id": "agent-control",
+          "title": "Planning and human approval",
+          "steps": [
+            "25",
+            "26"
+          ]
+        },
+        {
+          "id": "mcp",
+          "title": "Model Context Protocol",
+          "steps": [
+            "27",
+            "28"
+          ]
+        },
+        {
+          "id": "agent-evaluation",
+          "title": "Agent evaluation and prompt injection",
+          "steps": [
+            "29"
+          ]
+        }
+      ]
     }
   ]
 }

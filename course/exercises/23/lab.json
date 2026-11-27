@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "The tool-calling loop with step limits",
+  "description": "Run the reason-act loop: call the model, validate and execute tools, feed results back, and stop on a final answer or a budget.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

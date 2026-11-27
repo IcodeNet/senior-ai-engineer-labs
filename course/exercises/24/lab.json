@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Tool errors, retries and idempotency",
+  "description": "Classify tool failures, retry only what is safe with capped backoff, and make side-effecting tools idempotent.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

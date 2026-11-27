@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Tool schemas and argument validation",
+  "description": "Describe tools with JSON Schema, validate model-generated arguments in code and return errors the model can correct.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

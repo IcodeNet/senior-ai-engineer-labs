@@ -14,6 +14,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node icode/acceptance.mjs",
     "test:browser": "node icode/browser.mjs",
+    "azure:prices": "node icode/azure.mjs prices",
     "azure:plan": "node icode/azure.mjs plan",
     "azure:up": "node icode/azure.mjs up",
     "azure:status": "node icode/azure.mjs status",

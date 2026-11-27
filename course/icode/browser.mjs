@@ -4,12 +4,16 @@ import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
-const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0" } });
+// Azure is never reached: live tests are off, and az gets an empty config directory, so it is signed out.
+const azureConfig = await mkdtemp(join(tmpdir(), "icode-no-azure-"));
+const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0", AZURE_CONFIG_DIR: azureConfig } });
 const closed = once(child, "close");
 let logs = "";
 for (const stream of [child.stdout, child.stderr]) stream.on("data", (x) => (logs = (logs + x).slice(-8000)));
@@ -88,10 +92,43 @@ try {
   assert.match((await status.textContent()) ?? "", /^PASS/, "edited playground must pass in the browser");
   evidence.push("Editing and saving in the browser turns the failing playground into a passing one");
   await page.screenshot({ path: join(root, "acceptance-results/course.png"), fullPage: true });
+
+  // Lab 03 course actions: listed in the Actions tab, set-up and shutdown marked destructive.
+  await page.getByRole("tab", { name: /^Actions/ }).click();
+  const lab03 = page.getByRole("region", { name: "Lab 03 · Real Azure" });
+  for (const action of course.actions) await lab03.getByRole("button", { name: action.label, exact: true }).waitFor();
+  assert.equal(await lab03.locator(".badge.danger").count(), 2, "set-up and shutdown must be marked destructive");
+  evidence.push(`Actions tab lists the ${course.actions.length} Lab 03 actions; set-up and shutdown are marked destructive`);
+  // Plan runs from the UI; with az signed out (or absent) it stops before reading any subscription.
+  await lab03.getByRole("button", { name: course.actions.find((a) => a.id === "azure-plan").label, exact: true }).click();
+  const actionOutput = page.getByRole("log", { name: "Action output" });
+  await until(async () => /Not signed in to Azure|Azure CLI not found/.test((await actionOutput.textContent()) ?? ""), "plan must run from the Actions tab and report the missing sign-in");
+  await until(async () => /· failed/.test((await page.locator(".actions-panel .execution-summary").textContent()) ?? ""), "plan run must finish");
+  evidence.push("“Plan Azure set-up” runs from the Actions tab and stops at the missing az sign-in (no Azure call)");
+  await page.screenshot({ path: join(root, "acceptance-results/actions.png"), fullPage: true });
+
+  // Cost banner fails closed. Only exercised when this checkout has no real Azure state.
+  if (!existsSync(join(root, ".azure"))) {
+    const banner = page.getByRole("region", { name: "Course status" });
+    try {
+      await mkdir(join(root, ".azure"));
+      await writeFile(join(root, ".azure/cost-status-unknown.json"), JSON.stringify({ reason: "browser acceptance" }));
+      await page.reload();
+      await until(async () => /Cost status unknown/.test((await banner.textContent().catch(() => "")) ?? ""), "the cost-unknown banner must show", 200);
+      await page.screenshot({ path: join(root, "acceptance-results/cost-banner.png") });
+    } finally {
+      await rm(join(root, ".azure"), { recursive: true, force: true });
+    }
+    await page.reload();
+    await page.locator("button.exercise").first().waitFor();
+    await until(async () => (await banner.count()) === 0, "the banner must clear when the marker is gone", 200);
+    evidence.push("Cost banner shows “Cost status unknown” for the marker and clears when it is removed");
+  } else evidence.push("Cost banner check skipped: this checkout has real .azure state");
 } finally {
   await browser?.close();
   if (child.exitCode === null) child.kill("SIGTERM");
   await closed;
+  await rm(azureConfig, { recursive: true, force: true });
 }
 for (const port of [4317, 5173]) await released(port);
 evidence.push("Stopping the workshop releases ports 4317 and 5173");

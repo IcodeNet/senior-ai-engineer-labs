@@ -58,3 +58,67 @@ export function remainingAfterTeardown({ groupExists, taggedResources, deletedAc
   for (const account of deletedAccounts) remaining.push(`soft-deleted account ${account.name} (not purged)`);
   return remaining;
 }
+
+// ---- Icode Workshop course actions -------------------------------------------------------------
+// The engine runs `npm run azure:*` from the Actions tab with a random per-run ICODE_CONFIRM_TOKEN and
+// opens a typed-confirmation dialog only for protocol lines that carry that token.
+
+export const CONFIRM_TAG = "::icode-confirm";
+
+/** The protocol line that asks the Icode UI for a typed confirmation. */
+export function confirmLine(token, expected, message) {
+  return `${CONFIRM_TAG}:${token}::${JSON.stringify({ expected, message })}`;
+}
+
+/**
+ * Where a typed confirmation may come from: the Icode engine (an action run with its token), an
+ * interactive terminal, or nowhere. Piped or scripted input is never accepted as a confirmation.
+ */
+export function confirmChannel({ action, token, isTTY }) {
+  if (action === "1" && typeof token === "string" && /^[A-Za-z0-9_-]{16,}$/.test(token)) return "icode";
+  if (isTTY) return "terminal";
+  return "none";
+}
+
+/** Marker files under the course root that drive the Icode cost banners (course.json `indicators`). */
+export const COST_MARKERS = {
+  env: ".azure/env.json",
+  mayExist: ".azure/resources-may-exist.json",
+  unknown: ".azure/cost-status-unknown.json",
+};
+
+/**
+ * Marker changes after an Azure state check. Fails closed: only a successful check in the subscription
+ * the resources were created in can clear a banner.
+ * state: { kind: "unknown", reason } | { kind: "remaining", items } | { kind: "zero" }
+ */
+export function markerChanges(state, now = new Date()) {
+  if (state.kind === "zero") return { write: {}, remove: [COST_MARKERS.env, COST_MARKERS.mayExist, COST_MARKERS.unknown] };
+  if (state.kind === "remaining")
+    return { write: { [COST_MARKERS.mayExist]: { reason: "course resources found", items: state.items, checkedAt: now.toISOString() } }, remove: [COST_MARKERS.unknown] };
+  return { write: { [COST_MARKERS.unknown]: { reason: state.reason || "Azure state could not be checked", checkedAt: now.toISOString() } }, remove: [] };
+}
+
+/** The subscription recorded by an earlier `up`, if any; a check elsewhere cannot prove the cost is zero. */
+export function recordedSubscription(markers) {
+  for (const marker of markers) if (marker && typeof marker.subscriptionId === "string" && marker.subscriptionId) return marker.subscriptionId;
+  return undefined;
+}
+
+/** Pay-per-token meters for a model from Azure Retail Prices API items (names vary: "gpt-5-mini", "gpt 5 mini"). */
+export function modelMeters(items, modelName) {
+  const words = modelName.toLowerCase().split(/[-\s.]+/).filter(Boolean);
+  const normal = (s) => (s ?? "").toLowerCase().replace(/[-\s.]+/g, " ");
+  const wanted = ` ${words.join(" ")} `;
+  const seen = new Set();
+  return items
+    .filter((i) => i.type === "Consumption" && i.retailPrice > 0 && ` ${normal(i.meterName)} `.includes(wanted))
+    .map((i) => ({ meter: i.meterName, unit: i.unitOfMeasure, price: i.retailPrice, currency: i.currencyCode, region: i.armRegionName, product: i.productName }))
+    .filter((m) => {
+      const key = `${m.meter}|${m.region}|${m.unit}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.meter.localeCompare(b.meter));
+}

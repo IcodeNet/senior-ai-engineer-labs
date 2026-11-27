@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { checkModel, confirmed, courseTags, estimateCost, isCourseGroup, remainingAfterTeardown, resourceGroupName, searchBasicHourly } from "./azure-lib.mjs";
+import { COST_MARKERS, checkModel, confirmChannel, confirmLine, confirmed, markerChanges, modelMeters, recordedSubscription, courseTags, estimateCost, isCourseGroup, remainingAfterTeardown, resourceGroupName, searchBasicHourly } from "./azure-lib.mjs";
 
 const now = new Date("2026-11-27T12:00:00Z");
 const model = (name, version, skus, inference) => ({ model: { name, version, skus: skus.map((s) => ({ name: s })), deprecation: inference ? { inference } : undefined } });
@@ -55,5 +55,36 @@ describe("azure lifecycle decisions", () => {
     expect(
       remainingAfterTeardown({ groupExists: true, taggedResources: [{ type: "Microsoft.Search/searchServices", name: "s" }], deletedAccounts: [{ name: "oai" }] }),
     ).toEqual(["resource group still exists", "resource Microsoft.Search/searchServices s", "soft-deleted account oai (not purged)"]);
+  });
+
+  test("confirmations come from the Icode engine with its token, or an interactive terminal, never from a pipe", () => {
+    expect(confirmChannel({ action: "1", token: "0123456789abcdef0123", isTTY: false })).toBe("icode");
+    expect(confirmChannel({ action: undefined, token: "0123456789abcdef0123", isTTY: false })).toBe("none");
+    expect(confirmChannel({ action: "1", token: "", isTTY: false })).toBe("none");
+    expect(confirmChannel({ action: "1", token: "short", isTTY: true })).toBe("terminal");
+    expect(confirmChannel({ action: undefined, token: undefined, isTTY: true })).toBe("terminal");
+    expect(confirmLine("abc", "create", "Billable.")).toBe('::icode-confirm:abc::{"expected":"create","message":"Billable."}');
+  });
+
+  test("cost markers fail closed: only a clean check clears them", () => {
+    const now = new Date("2026-11-27T12:00:00Z");
+    expect(markerChanges({ kind: "zero" })).toEqual({ write: {}, remove: Object.values(COST_MARKERS) });
+    expect(markerChanges({ kind: "remaining", items: ["resource group still exists"] }, now)).toEqual({
+      write: { [COST_MARKERS.mayExist]: { reason: "course resources found", items: ["resource group still exists"], checkedAt: now.toISOString() } },
+      remove: [COST_MARKERS.unknown],
+    });
+    expect(markerChanges({ kind: "unknown", reason: "Not signed in" }, now)).toEqual({ write: { [COST_MARKERS.unknown]: { reason: "Not signed in", checkedAt: now.toISOString() } }, remove: [] });
+    expect(recordedSubscription([undefined, { subscriptionId: "sub-1" }])).toBe("sub-1");
+    expect(recordedSubscription([undefined, {}])).toBeUndefined();
+  });
+
+  test("token meters are matched by model name across naming styles", () => {
+    const items = [
+      { type: "Consumption", meterName: "gpt 5 mini Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 0.25, currencyCode: "USD", armRegionName: "Global" },
+      { type: "Consumption", meterName: "gpt-5-mini-Outp-glbl", unitOfMeasure: "1M", retailPrice: 2, currencyCode: "USD", armRegionName: "Global" },
+      { type: "Consumption", meterName: "gpt 5 Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 1.25, currencyCode: "USD", armRegionName: "Global" },
+      { type: "Consumption", meterName: "gpt 5 mini Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 0.25, currencyCode: "USD", armRegionName: "Global" },
+    ];
+    expect(modelMeters(items, "gpt-5-mini").map((m) => m.meter)).toEqual(["gpt 5 mini Inp glbl Tokens", "gpt-5-mini-Outp-glbl"]);
   });
 });

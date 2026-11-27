@@ -11,7 +11,7 @@ The repository contains two things:
 
 ## The course
 
-Runs on your own machine (laptop or desktop). Labs 01, 02 and 04 cost nothing: no cloud account or API key.
+Runs on your own machine (laptop or desktop). Labs 01, 02, 04 and 06 cost nothing: no cloud account or API key.
 
 **Prerequisites:** Node.js 22.13 or later, Git.
 
@@ -29,8 +29,9 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 | 02 · Evaluation engineering | 09–16 | Labelled datasets, evaluation harness, groundedness checks, LLM-as-judge, judge calibration, paired bootstrap, CI regression gates, cost and latency |
 | 03 · Real Azure (paid while running) | 17–21 | Real Azure AI Search index, Azure OpenAI embeddings, keyword/vector/hybrid/semantic search with approval filters, grounded answers, evaluation, then shutdown |
 | 04 · Agent engineering and MCP | 22–29 | Tool schemas and validation, the tool-calling loop with limits, retries and idempotency, plan-and-execute state machine, human approval gates, an MCP server and a hand-written MCP client, agent evaluation and prompt injection via tool outputs |
+| 06 · Architecture and interview drills | 38–45 | Capacity and token throughput, latency budgets and P95 composition, RAG vs fine-tune vs long-context cost, retrieval strategy decisions, SLOs and error budgets, FMEA, model selection scorecards with sensitivity, design review for missing controls |
 
-Labs 01, 02 and 04 simulate models, judges, search and tools with deterministic fakes (Lab 04 uses the official MCP TypeScript SDK in memory), so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
+Labs 01, 02, 04 and 06 simulate models, judges, search and tools with deterministic fakes (Lab 04 uses the official MCP TypeScript SDK in memory), so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
 
 ```sh
 npm run azure:plan   # live prices and model checks; creates nothing
@@ -65,7 +66,7 @@ pnpm --filter @labs/agent-factory test
 
 ## Status
 
-Labs 01 and 02 are verified in CI. Lab 03 is verified offline in CI (exact Azure requests, setup/shutdown logic, Bicep compilation); its live run against Azure has not yet been verified on a real subscription. Lab 04 (agents and MCP, steps 22–29) is verified in CI on its pull request branch and not yet merged; see its progress entry. Not yet built: real model judging in Lab 02, live-model agent runs, and a production-AI lab. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+Labs 01 and 02 are verified in CI. Lab 03 is verified offline in CI (exact Azure requests, setup/shutdown logic, Bicep compilation); its live run against Azure has not yet been verified on a real subscription. Lab 04 (agents and MCP, steps 22–29) is verified in CI on its pull request branch; see its progress entry. Not yet built: real model judging in Lab 02, live-model agent runs, and a production-AI lab. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
 
 ## Rules for contributors and agents
 

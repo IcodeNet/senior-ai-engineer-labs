@@ -162,6 +162,50 @@
           ]
         }
       ]
+    },
+    {
+      "id": "lab-06-architecture-drills",
+      "title": "Lab 06 \u00b7 Architecture and interview drills (local)",
+      "exercises": [
+        {
+          "id": "sizing",
+          "title": "Capacity, latency and cost",
+          "steps": [
+            "38",
+            "39",
+            "40"
+          ]
+        },
+        {
+          "id": "retrieval-design",
+          "title": "Retrieval design",
+          "steps": [
+            "41"
+          ]
+        },
+        {
+          "id": "reliability-risk",
+          "title": "Reliability and risk",
+          "steps": [
+            "42",
+            "43"
+          ]
+        },
+        {
+          "id": "selection",
+          "title": "Model and vendor selection",
+          "steps": [
+            "44"
+          ]
+        },
+        {
+          "id": "design-review",
+          "title": "Design review",
+          "steps": [
+            "45"
+          ]
+        }
+      ]
     }
   ]
 }

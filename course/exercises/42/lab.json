@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "SLOs and error budgets for AI features",
+  "description": "Availability, latency and quality SLOs with error budgets, minimum samples and multi-window burn-rate paging.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

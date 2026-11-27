@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Build vs buy and model selection scorecards",
+  "description": "Hard constraints, min-max normalised weighted scores and weight sensitivity analysis for a model or vendor choice.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

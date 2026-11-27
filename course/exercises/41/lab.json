@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Choosing a retrieval strategy from requirements",
+  "description": "A decision function that picks structured query, long context, BM25, vector or hybrid retrieval, with reranking, controls and reason codes.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

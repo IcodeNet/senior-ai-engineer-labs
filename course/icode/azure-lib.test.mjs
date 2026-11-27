@@ -84,7 +84,10 @@ describe("azure lifecycle decisions", () => {
       { type: "Consumption", meterName: "gpt-5-mini-Outp-glbl", unitOfMeasure: "1M", retailPrice: 2, currencyCode: "USD", armRegionName: "Global" },
       { type: "Consumption", meterName: "gpt 5 Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 1.25, currencyCode: "USD", armRegionName: "Global" },
       { type: "Consumption", meterName: "gpt 5 mini Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 0.25, currencyCode: "USD", armRegionName: "Global" },
+      { type: "Consumption", meterName: "GPT5 Mini cached Inp", unitOfMeasure: "1M", retailPrice: 0.03, currencyCode: "USD", armRegionName: "swedencentral" },
+      { type: "Consumption", meterName: "gpt 5 mini Inp glbl Tokens", unitOfMeasure: "1M", retailPrice: 0.3, currencyCode: "USD", armRegionName: "eastus" },
+      { type: "Consumption", meterName: "o4 mini Inp", unitOfMeasure: "1M", retailPrice: 1, currencyCode: "USD", armRegionName: "swedencentral" },
     ];
-    expect(modelMeters(items, "gpt-5-mini").map((m) => m.meter)).toEqual(["gpt 5 mini Inp glbl Tokens", "gpt-5-mini-Outp-glbl"]);
+    expect(modelMeters(items, "gpt-5-mini", "swedencentral").map((m) => m.meter).sort()).toEqual(["GPT5 Mini cached Inp", "gpt 5 mini Inp glbl Tokens", "gpt-5-mini-Outp-glbl"]);
   });
 });

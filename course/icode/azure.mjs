@@ -123,14 +123,15 @@ async function prices(region) {
     return null;
   }
 }
-async function tokenPrices(model) {
+async function tokenPrices(model, region) {
   const items = [];
-  for (const name of new Set([model.name, model.name.replaceAll("-", " ")])) {
+  // contains() is case-sensitive and meter names vary, so search on the last word and filter locally.
+  for (const name of new Set([model.name, model.name.replaceAll("-", " "), model.name.split("-").at(-1)])) {
     try {
       items.push(...(await retail(`priceType eq 'Consumption' and contains(meterName, '${name}')`)));
     } catch {}
   }
-  return modelMeters(items, model.name);
+  return modelMeters(items, model.name, region);
 }
 
 /** List prices only: no Azure sign-in needed, nothing is read from or created in a subscription. */
@@ -140,7 +141,7 @@ async function showPrices() {
   const hourly = await prices(region);
   console.log(`Azure AI Search Basic, 1 search unit: ${hourly ? `${hourly.price} ${hourly.currency}/hour (≈ ${estimateCost(hourly.price, 24)} ${hourly.currency}/day, ≈ ${estimateCost(hourly.price, 730)} ${hourly.currency}/month)` : "not available (offline, or no Basic price for this region)"}`);
   for (const model of [config.chatModel, config.embeddingModel]) {
-    const meters = (await tokenPrices(model)).filter((m) => [region, "global", ""].includes((m.region ?? "").toLowerCase()) || /glbl|global/i.test(m.meter));
+    const meters = await tokenPrices(model, region);
     console.log(`\n${model.name} (${model.sku}) per-token meters:`);
     if (!meters.length) console.log("  not found; see https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/");
     for (const m of meters) console.log(`  • ${m.meter} [${m.region || "global"}]: ${m.price} ${m.currency} per ${m.unit}`);

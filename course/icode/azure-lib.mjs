@@ -105,14 +105,14 @@ export function recordedSubscription(markers) {
   return undefined;
 }
 
-/** Pay-per-token meters for a model from Azure Retail Prices API items (names vary: "gpt-5-mini", "gpt 5 mini"). */
-export function modelMeters(items, modelName) {
-  const words = modelName.toLowerCase().split(/[-\s.]+/).filter(Boolean);
-  const normal = (s) => (s ?? "").toLowerCase().replace(/[-\s.]+/g, " ");
-  const wanted = ` ${words.join(" ")} `;
+/** Pay-per-token meters for a model from Azure Retail Prices API items (names vary: "gpt-5-mini", "gpt 5 mini", "GPT5 Mini"). */
+export function modelMeters(items, modelName, region) {
+  const squash = (s) => (s ?? "").toLowerCase().replace(/[-\s._]+/g, "");
+  const wanted = squash(modelName);
+  const inRegion = (r) => !region || ["", "global", region.toLowerCase()].includes((r ?? "").toLowerCase());
   const seen = new Set();
   return items
-    .filter((i) => i.type === "Consumption" && i.retailPrice > 0 && ` ${normal(i.meterName)} `.includes(wanted))
+    .filter((i) => i.type === "Consumption" && i.retailPrice > 0 && squash(i.meterName).includes(wanted) && inRegion(i.armRegionName))
     .map((i) => ({ meter: i.meterName, unit: i.unitOfMeasure, price: i.retailPrice, currency: i.currencyCode, region: i.armRegionName, product: i.productName }))
     .filter((m) => {
       const key = `${m.meter}|${m.region}|${m.unit}`;

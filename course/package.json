@@ -22,9 +22,11 @@
     "test:tools": "vitest run --dir icode"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@playwright/test": "1.65.1",
     "@types/node": "^22.10.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "4.6.7"
   }
 }

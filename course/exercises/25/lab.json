@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Planning vs reactive agents: an explicit state machine",
+  "description": "Validate a model-written plan before anything runs, execute it in dependency order and drive every change through a pure state-machine reducer with a bounded replan budget.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

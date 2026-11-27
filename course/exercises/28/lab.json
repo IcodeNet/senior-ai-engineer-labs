@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "An MCP client: handshake and capability negotiation",
+  "description": "Write the client side of MCP by hand over JSON-RPC: version negotiation, capability checks, pagination, tool results versus protocol errors, and adapting MCP tools to the agent loop.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

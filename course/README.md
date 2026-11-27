@@ -48,6 +48,14 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 19 | Keyword, vector, hybrid and semantic search on Azure | Four query modes behind a backend approval filter |
 | 20 | Grounded answers with Azure OpenAI | Chat completions, content-filter handling, step 08 pipeline on real services |
 | 21 | Evaluate on Azure, then shut down | Mode comparison on the labelled set, then teardown and verification |
+| 22 | Tool schemas and argument validation | JSON Schema argument validation, model-actionable errors, tool-definition lint |
+| 23 | The tool-calling loop with step limits | Model → validate → run → feed back, with step, tool-call and repeated-call limits |
+| 24 | Tool errors, retries and idempotency | Error classification, capped backoff with Retry-After, idempotency keys and replay |
+| 25 | Planning vs reactive agents: an explicit state machine | Plan validation, dependency order, pure reducer, bounded replanning |
+| 26 | Human-in-the-loop approval for high-impact tools | Impact policy, approvals bound to exact arguments, four-eyes, expiry, single use, audit |
+| 27 | Building an MCP server: tools, resources and prompts | `McpServer` with tools, a resource template and a prompt, tested over `InMemoryTransport` |
+| 28 | An MCP client: handshake and capability negotiation | Raw JSON-RPC initialize, version check, capability gating, pagination, tool vs protocol errors |
+| 29 | Agent evaluation and prompt injection through tool outputs | Trajectory scoring, tool-use precision/recall, quarantine, injection suite |
 | 30 | Tenant isolation and document ACLs | Deny-by-default tenant, ACL and clearance checks (unknown levels deny); escaped OData security filter; post-filter audit |
 | 31 | PII detection and redaction | Luhn and IBAN mod-97 validation, card windows, overlap resolution, reversible typed placeholders |
 | 32 | Prompt-injection defences and a red-team harness | Injection scanner, quarantine, canary and link-allowlist output checks, attack success rate |
@@ -65,7 +73,7 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 44 | Build vs buy and model selection scorecards | Hard constraints, weighted min-max scores, weight sensitivity |
 | 45 | System-design review: find the missing controls | Residency, approval, audit, PII, injection, cost-cap and access-control checks, verdict |
 
-Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. Steps 30–37 are **Lab 05, production AI (local)**: authorization, PII, prompt injection, resilience, rate limits, caching, observability and release safety around the same RAG service, with deterministic fakes for models, clocks and randomness, so it costs nothing. Steps 38–45 are **Lab 06, architecture and interview drills (local)**: each turns a senior design judgement (capacity, latency, cost, retrieval choice, SLOs, FMEA, model selection, design review) into a tested function, and each lesson adds a model answer outline to its interview question; they cost nothing. Steps 22–29 are reserved for Lab 04. All teaching happens in this course.
+Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. Steps 22–29 are **Lab 04, agent engineering and MCP (local)**: tools, the agent loop, retries and idempotency, planning, human approval, an MCP server and client, and agent evaluation with prompt-injection cases. Models are scripted fakes and MCP runs over the official SDK's in-memory transport, so it costs nothing and needs no API key. Steps 30–37 are **Lab 05, production AI (local)**: authorization, PII, prompt injection, resilience, rate limits, caching, observability and release safety around the same RAG service, with deterministic fakes for models, clocks and randomness, so it costs nothing. Steps 38–45 are **Lab 06, architecture and interview drills (local)**: each turns a senior design judgement (capacity, latency, cost, retrieval choice, SLOs, FMEA, model selection, design review) into a tested function, and each lesson adds a model answer outline to its interview question; they cost nothing. All teaching happens in this course.
 
 ## Lab 03 — real Azure (paid while running)
 
@@ -93,6 +101,15 @@ Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`
 Region and models are set in `azure/config.json` (default `swedencentral`). `azure:plan` refuses models that your region does not offer or that retire within a week; change the config if it does. List prices come from the public Azure Retail Prices API and may differ from your agreement.
 
 Each Lab 03 step has **offline tests** (exact REST requests against a fake transport, always run) and **live tests** that run only when `.azure/env.json` exists. Course acceptance and CI never call Azure (`ICODE_AZURE_LIVE=0`).
+
+## Lab 04 — agent engineering and MCP (local, free)
+
+**Objective:** build a tool-using expenses assistant the way you would ship one — validated tool calls, a bounded loop, safe retries, explicit control flow, human approval for high-impact actions, MCP on both sides, and an evaluation suite that includes prompt injection through tool outputs.
+
+- **Prerequisites and setup:** the same as Labs 01–02 (`npm run setup`). Lab 04 adds two development dependencies, both pinned exactly in `package.json`: the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` 1.32.2, and `zod` 4.6.7, which steps 27 and 28 import directly for tool schemas (the SDK also depends on it; declaring it avoids relying on a transitive install). The SDK is not small: it adds 93 packages to `package-lock.json` (Express, Hono, Ajv, jose and others for its HTTP transports and auth), although the lab uses only its in-memory transport.
+- **Run and test:** open steps 22–29 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (8–11 tests per step).
+- **Cost:** £0. Models are scripted fakes; MCP servers and clients talk over the SDK's `InMemoryTransport` (no process, port or network). No cloud resources are created, so there is nothing to clean up or verify afterwards.
+- **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 29 are a teaching aid that paraphrased attacks will evade; step 28's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
 
 ## Lab 05 — production AI (local)
 

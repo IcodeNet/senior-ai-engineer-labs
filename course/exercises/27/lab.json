@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Building an MCP server: tools, resources and prompts",
+  "description": "Expose approved expense policies over the Model Context Protocol with the official TypeScript SDK and test it end to end through an in-memory transport.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

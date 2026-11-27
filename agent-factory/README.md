@@ -23,6 +23,7 @@ Course structure rules (`src/course.ts`), checked on the whole `course/` tree in
 | `course-solution` | The reference solution contains no stubs or TODOs |
 | `course-test-runner` | `lab.json` uses `"testScript": "test"` with `["--run"]`, and each variant's `test` script is `vitest` |
 | `course-lesson` | The lesson README has a title and an `## Interview question` section |
+| `course-step-layout` | A step folder contains only `lab.json`, `README.md`, `problem/` and `solution/` (ignoring `node_modules` and dot entries), so stray copies of a solution are caught |
 
 ## Run locally
 

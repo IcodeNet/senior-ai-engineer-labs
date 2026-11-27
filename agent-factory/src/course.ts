@@ -5,6 +5,7 @@ import type { Finding } from './policy.js';
 
 const STEP = /^\d{2}$/;
 const VARIANTS = ['problem', 'solution'] as const;
+const STEP_ENTRIES = ['README.md', 'lab.json', 'problem', 'solution'];
 
 function warn(rule: string, file: string, message: string): Finding {
   return { rule, severity: 'warning', file, message };
@@ -51,6 +52,10 @@ export function reviewCourse(root: string): Finding[] {
   for (const id of onDisk) {
     const base = join(exercises, id);
     const rel = `course/exercises/${id}`;
+    // Only the lesson, its config and the two variants belong in a step; node_modules and dot entries are local artefacts.
+    for (const name of readdirSync(base).sort())
+      if (!STEP_ENTRIES.includes(name) && name !== 'node_modules' && !name.startsWith('.'))
+        findings.push(warn('course-step-layout', `${rel}/${name}`, `Unexpected ${name} in a step; a step contains only lab.json, README.md, problem/ and solution/.`));
     let entry = 'index.ts';
     try {
       const lab = json(join(base, 'lab.json')) as { entry?: string; testScript?: string; testArgs?: unknown };

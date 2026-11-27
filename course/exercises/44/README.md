@@ -4,7 +4,7 @@
 "Which model (or vendor, or self-hosted stack) should we use?" gets decided in meetings by whoever argues loudest — unless someone brings a **weighted scorecard** and shows how robust the answer is.
 
 1. **Hard constraints first.** Data residency, contractual terms or a security certification are not trade-offs: an option that fails one is **eliminated**, however good its scores. Weighting them would let a great score buy its way past a compliance requirement.
-2. **Normalise** each criterion across the remaining options with min-max scaling so units (pence, milliseconds, accuracy) are comparable; invert "lower is better" criteria; a criterion where everyone ties gives everyone 1.
+2. **Normalise** each criterion across the remaining options with min-max scaling so units (pence, milliseconds, accuracy) are comparable; invert "lower is better" criteria; a criterion where everyone ties gives everyone 1. Min-max scaling has two known weaknesses: it **stretches small gaps** (quality 0.80 vs 0.90 becomes 0 vs 1), and it causes **rank reversal** — adding or removing an option, including by elimination, changes every score and can reorder the others. When the scorecard must be auditable over time, prefer **fixed reference scales** agreed in advance (for example quality 0.5 → 0, 1.0 → 1; cost £0 → 1, £20 → 0).
 3. **Weight** and sum. Weights encode priorities, so agree them *before* seeing the scores and normalise them to sum to 1.
 4. **Sensitivity.** Nudge each weight up and down by a fraction and see whether the winner changes. A decision that flips when "quality" matters 30% more is a decision to discuss openly, not to present as obvious.
 

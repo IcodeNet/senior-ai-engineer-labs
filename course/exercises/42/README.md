@@ -5,8 +5,8 @@ An AI feature can be "up" and still useless: it answers fast, with confident, un
 
 - An SLO is `good events / eligible events ≥ target` over a window. Define *eligible* carefully: latency is measured on served requests (failures already count against availability); quality on evaluated requests only.
 - The **error budget** is the bad events you may have: `(1 − target) × eligible`. `budgetRemaining = 1 − bad / allowedBad`; below 0 the SLO is breached, near 0 it is at risk and the team slows down risky changes.
-- A quality SLO from a small sample is noise: require a **minimum sample** and report `insufficient-data` rather than a false green or red.
-- **Burn rate** = `badFraction / (1 − target)`; a burn rate of 1 spends the budget exactly over the window. Page on **multi-window** burn (a short and a long window both above a threshold such as 14.4) so you catch fast burns without paging on blips.
+- A quality SLO from a small sample is noise: 90 passes out of 100 has a 95% confidence interval of roughly ±6 percentage points. Require a **minimum sample** and report `insufficient-data` rather than a false green or red.
+- **Burn rate** = `badFraction / (1 − target)`; a burn rate of 1 spends the budget exactly over the window. Page on **multi-window** burn (a short and a long window both above a threshold) so you catch fast burns without paging on blips. The common 14.4 comes from the Google SRE workbook: burning **2% of a 30-day budget in 1 hour** means `0.02 × 720 h / 1 h = 14.4`. Pair a 1-hour long window with a 5-minute short window for paging, and add a slower tier (for example 6× over 6 hours with a 30-minute short window, 5% of the budget) that opens a ticket instead of paging.
 - A 100% target leaves no budget and forbids change; reject it.
 
 ## Interview question

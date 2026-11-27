@@ -48,6 +48,14 @@ test("short requests can be bound by the request limit instead", () => {
   assert.equal(plan.concurrentRequests, 6);
 });
 
+test("when both limits need the same number of deployments, tokens are reported as binding", () => {
+  const tiny: RequestProfile = { systemPromptTokens: 0, queryTokens: 50, retrievedChunks: 0, tokensPerChunk: 0, outputTokens: 50, meanLatencyMs: 200 };
+  // 180,000 TPM / 60,000 = 3 and 1,800 RPM / 600 = 3.
+  const plan = estimateCapacity(tiny, { dailyRequests: 864_000, peakToAverage: 3 }, { tokensPerMinute: 60_000, requestsPerMinute: 600, targetUtilisation: 1 });
+  assert.equal(plan.deploymentsNeeded, 3);
+  assert.equal(plan.bindingConstraint, "tokens");
+});
+
 test("at least one deployment, and invalid inputs are rejected", () => {
   assert.equal(estimateCapacity(profile, { dailyRequests: 0, peakToAverage: 1 }, limits).deploymentsNeeded, 1);
   assert.throws(() => estimateCapacity(profile, { dailyRequests: 1000, peakToAverage: 0.5 }, limits), RangeError);

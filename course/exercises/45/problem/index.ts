@@ -19,7 +19,14 @@ export interface ArchitectureSpec {
   dataResidency: string | null;
   components: Component[];
   tools: Tool[];
-  audit: { logsPrompts: boolean; logsToolCalls: boolean; redactsPii: boolean; retentionDays: number };
+  audit: {
+    logsPrompts: boolean;
+    logsToolCalls: boolean;
+    redactsPii: boolean;
+    retentionDays: number;
+    /** Longest retention the records policy allows (storage limitation for personal data), or null if unbounded. */
+    maxRetentionDays: number | null;
+  };
   injection: { untrustedInputs: string[]; separatesInstructions: boolean; validatesToolArguments: boolean };
   cost: { maxTokensPerRequest: number | null; hardMonthlyCap: boolean };
   /** Null when the design has no retrieval. */
@@ -43,6 +50,26 @@ export interface Finding {
 }
 
 export type Verdict = "approve" | "approve-with-conditions" | "reject";
+
+/** Azure region names mapped to the geography used for residency (provided; extend for your estate). */
+const GEOGRAPHY: Record<string, string> = {
+  westeurope: "eu",
+  northeurope: "eu",
+  swedencentral: "eu",
+  francecentral: "eu",
+  germanywestcentral: "eu",
+  uksouth: "uk",
+  ukwest: "uk",
+  eastus: "us",
+  eastus2: "us",
+  westus: "us",
+};
+
+/** Normalise a region or geography name: case and spaces are ignored, known regions map to their geography. */
+export function regionGeography(region: string): string {
+  const key = region.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return GEOGRAPHY[key] ?? key;
+}
 
 export function minimumRetentionDays(classification: Classification): number {
   // TODO: 365 days for confidential and restricted data, otherwise 90.

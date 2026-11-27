@@ -9,8 +9,10 @@ export interface RetrievalRequirements {
   exactIdentifiers: boolean;
   multilingual: boolean;
   precisionCritical: boolean;
-  /** Time available for the retrieval stage, in milliseconds. */
+  /** Time available for the whole retrieval stage (search plus any rerank), in milliseconds. */
   retrievalBudgetMs: number;
+  /** Expected time of the search itself (lexical, vector or both in parallel), in milliseconds. */
+  retrievalLatencyMs: number;
   rerankLatencyMs: number;
   documentLevelAccess: boolean;
   /** How quickly a document change must be searchable. */
@@ -49,6 +51,7 @@ export function chooseRetrieval(req: RetrievalRequirements): RetrievalDecision {
   assertNonNegative("corpusTokens", req.corpusTokens);
   assertNonNegative("contextWindowTokens", req.contextWindowTokens);
   assertNonNegative("retrievalBudgetMs", req.retrievalBudgetMs);
+  assertNonNegative("retrievalLatencyMs", req.retrievalLatencyMs);
   assertNonNegative("rerankLatencyMs", req.rerankLatencyMs);
   assertNonNegative("freshnessMinutes", req.freshnessMinutes);
 
@@ -74,7 +77,8 @@ export function chooseRetrieval(req: RetrievalRequirements): RetrievalDecision {
     strategy = lexical && semantic ? "hybrid" : lexical ? "bm25" : "vector";
 
     if (req.precisionCritical) {
-      if (req.rerankLatencyMs <= req.retrievalBudgetMs) {
+      // Search and rerank run one after the other, so their times add (step 39).
+      if (req.retrievalLatencyMs + req.rerankLatencyMs <= req.retrievalBudgetMs) {
         reranker = true;
         reasons.push("precision-critical");
       } else {

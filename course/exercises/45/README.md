@@ -3,11 +3,11 @@
 ## Why it matters
 The last question in a senior AI design interview — and the first in a real architecture review board — is "what is missing?". Reviewers check the same controls every time, so a structured design spec can be checked mechanically before people spend time on the interesting trade-offs:
 
-- **Data residency**: every component (model, vector store, logs, caches) must run in the required region; a "global" cache is a residency breach too.
+- **Data residency**: every component (model, vector store, logs, caches) must run in the required geography; a "global" cache is a residency breach too. Region names come in many spellings (`swedencentral`, `West Europe`, `eu`), so compare normalised geographies, not raw strings — the provided `regionGeography` does this for a few Azure regions; a real review uses the full region list.
 - **Human approval** for tools that write or move money; read-only tools can run unattended.
-- **Audit**: side-effecting tool calls and prompts are logged, and retention meets the policy for the data classification. The 365/90-day minimums here are course placeholders; real retention comes from your records policy and regulator.
+- **Audit**: side-effecting tool calls and prompts are logged, and retention meets the policy for the data classification. Retention has a floor *and* a ceiling: record-keeping rules set minimums, while data-protection storage limitation (for example GDPR) means personal data must not be kept longer than needed. The 365/90-day minimums and the policy maximum here are course placeholders; real values come from your records policy and regulator.
 - **PII redaction** before confidential prompts reach logs.
-- **Prompt injection**: untrusted input (retrieved documents, emails, web pages) is separated from instructions, and model-proposed tool arguments are validated before any side effect.
+- **Prompt injection**: untrusted input (retrieved documents, emails, web pages) is separated from instructions, and model-proposed tool arguments are validated before any side effect. A design with retrieval always has untrusted input — retrieved documents — whether or not the spec lists it.
 - **Cost caps**: a per-request token limit and an *enforced* monthly cap — Azure budget alerts notify, they do not stop spending.
 - **Access control** enforced in the retrieval backend, never delegated to the model.
 
@@ -29,11 +29,11 @@ Implement in `index.ts`:
 
 - `minimumRetentionDays(classification)` — 365 for `confidential` and `restricted`, otherwise 90.
 - `reviewDesign(spec)` → `Finding[]` with these rules (side-effecting tools are `write` and `payment`):
-  - `data-residency` (high, subject = component id) for each component whose region differs from a non-null `dataResidency`;
+  - `data-residency` (high, subject = component id) for each component whose `regionGeography(region)` differs from `regionGeography(dataResidency)` when `dataResidency` is not null (`regionGeography` is provided);
   - `human-approval` (high, subject = tool id) for each side-effecting tool without `requiresApproval`;
-  - `audit` (high, `tool-calls`) when side-effecting tools exist and tool calls are not logged; (medium, `prompts`) when prompts are not logged; (medium, `retention`) when `retentionDays` is below the minimum;
+  - `audit` (high, `tool-calls`) when side-effecting tools exist and tool calls are not logged; (medium, `prompts`) when prompts are not logged; (medium, `retention`) when `retentionDays` is below the minimum; (medium, `retention-limit`) when `maxRetentionDays` is not null and `retentionDays` exceeds it;
   - `pii-redaction` (high, `logs`) when prompts are logged without redaction for confidential or restricted data;
-  - `prompt-injection`, only when there are untrusted inputs: (high, `instructions`) without instruction separation; (high, `tool-arguments`) when side-effecting tools exist without argument validation;
+  - `prompt-injection`: the effective untrusted inputs are `untrustedInputs` plus `"retrieved-documents"` whenever `retrieval` is not null (once). When there are any: (high, `instructions`) without instruction separation, with a message naming the inputs; (high, `tool-arguments`) when side-effecting tools exist without argument validation;
   - `cost-cap` (medium, `per-request`) when `maxTokensPerRequest` is null; (medium, `monthly`) without a hard monthly cap;
   - `access-control` (high, `retrieval`) when there is retrieval, the data is not public and access is not enforced in the backend.
   - Every finding has a non-empty `message`. Sort high before medium, then by control, then by subject.

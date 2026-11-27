@@ -21,11 +21,20 @@ test("parallel stages cost their slowest member; serial groups add up", () => {
   assert.throws(() => endToEndMs({ lexical: 1, vector: 1, rerank: 1 }, plan), { message: "missing stage generation" });
 });
 
-test("P95 is computed on end-to-end latency, and adding stage P95s overestimates it", () => {
+test("P95 is computed on end-to-end latency; here adding stage P95s overestimates it", () => {
   const all = traces();
   assert.equal(endToEndP95(all, plan), 1480);
   assert.equal(sumOfGroupP95s(all, plan), 1570); // 380 + 100 + 1090
   assert.ok(sumOfGroupP95s(all, plan) > endToEndP95(all, plan));
+});
+
+test("adding stage P95s can also underestimate when rare spikes land on different requests", () => {
+  const twoStages: Plan = [["a"], ["b"]];
+  const spiky: Trace[] = Array.from({ length: 100 }, (_, i) => ({ a: i < 4 ? 100 : 0, b: i >= 4 && i < 8 ? 100 : 0 }));
+  assert.equal(sumOfGroupP95s(spiky, twoStages), 0); // each stage spikes on only 4% of requests
+  assert.equal(endToEndP95(spiky, twoStages), 100); // but 8% of requests contain a spike
+  const correlated: Trace[] = Array.from({ length: 100 }, (_, i) => ({ a: i, b: 2 * i }));
+  assert.equal(sumOfGroupP95s(correlated, twoStages), endToEndP95(correlated, twoStages)); // exact when perfectly correlated
 });
 
 test("a latency budget gives every stage its floor and shares the rest by weight", () => {

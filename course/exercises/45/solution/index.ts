@@ -19,7 +19,14 @@ export interface ArchitectureSpec {
   dataResidency: string | null;
   components: Component[];
   tools: Tool[];
-  audit: { logsPrompts: boolean; logsToolCalls: boolean; redactsPii: boolean; retentionDays: number };
+  audit: {
+    logsPrompts: boolean;
+    logsToolCalls: boolean;
+    redactsPii: boolean;
+    retentionDays: number;
+    /** Longest retention the records policy allows (storage limitation for personal data), or null if unbounded. */
+    maxRetentionDays: number | null;
+  };
   injection: { untrustedInputs: string[]; separatesInstructions: boolean; validatesToolArguments: boolean };
   cost: { maxTokensPerRequest: number | null; hardMonthlyCap: boolean };
   /** Null when the design has no retrieval. */
@@ -44,6 +51,26 @@ export interface Finding {
 
 export type Verdict = "approve" | "approve-with-conditions" | "reject";
 
+/** Azure region names mapped to the geography used for residency (provided; extend for your estate). */
+const GEOGRAPHY: Record<string, string> = {
+  westeurope: "eu",
+  northeurope: "eu",
+  swedencentral: "eu",
+  francecentral: "eu",
+  germanywestcentral: "eu",
+  uksouth: "uk",
+  ukwest: "uk",
+  eastus: "us",
+  eastus2: "us",
+  westus: "us",
+};
+
+/** Normalise a region or geography name: case and spaces are ignored, known regions map to their geography. */
+export function regionGeography(region: string): string {
+  const key = region.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return GEOGRAPHY[key] ?? key;
+}
+
 const SENSITIVE: Classification[] = ["confidential", "restricted"];
 
 function isSideEffecting(tool: Tool): boolean {
@@ -62,7 +89,7 @@ export function reviewDesign(spec: ArchitectureSpec): Finding[] {
 
   if (spec.dataResidency !== null)
     for (const c of spec.components)
-      if (c.region !== spec.dataResidency)
+      if (regionGeography(c.region) !== regionGeography(spec.dataResidency))
         add("data-residency", "high", c.id, `${c.id} runs in ${c.region}; data must stay in ${spec.dataResidency}.`);
 
   for (const tool of sideEffecting)
@@ -75,13 +102,18 @@ export function reviewDesign(spec: ArchitectureSpec): Finding[] {
   const minimum = minimumRetentionDays(spec.classification);
   if (spec.audit.retentionDays < minimum)
     add("audit", "medium", "retention", `Audit retention of ${spec.audit.retentionDays} days is below the ${minimum}-day minimum.`);
+  if (spec.audit.maxRetentionDays !== null && spec.audit.retentionDays > spec.audit.maxRetentionDays)
+    add("audit", "medium", "retention-limit", `Audit retention of ${spec.audit.retentionDays} days exceeds the ${spec.audit.maxRetentionDays}-day policy limit.`);
 
   if (spec.audit.logsPrompts && !spec.audit.redactsPii && SENSITIVE.includes(spec.classification))
     add("pii-redaction", "high", "logs", `Prompts with ${spec.classification} data are logged without PII redaction.`);
 
-  if (spec.injection.untrustedInputs.length > 0) {
+  // Retrieved content is untrusted by definition, whatever the spec declares.
+  const untrusted = [...spec.injection.untrustedInputs];
+  if (spec.retrieval !== null && !untrusted.includes("retrieved-documents")) untrusted.push("retrieved-documents");
+  if (untrusted.length > 0) {
     if (!spec.injection.separatesInstructions)
-      add("prompt-injection", "high", "instructions", `Untrusted input (${spec.injection.untrustedInputs.join(", ")}) is not separated from instructions.`);
+      add("prompt-injection", "high", "instructions", `Untrusted input (${untrusted.join(", ")}) is not separated from instructions.`);
     if (sideEffecting.length > 0 && !spec.injection.validatesToolArguments)
       add("prompt-injection", "high", "tool-arguments", "Model-proposed tool arguments are not validated before side-effecting calls.");
   }

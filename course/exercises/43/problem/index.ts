@@ -30,6 +30,7 @@ export interface Mitigation {
 
 export interface ResidualRisk {
   modes: FailureMode[];
+  /** Summed RPN before and after: a progress indicator only; ratings are ordinal, so the totals are not a risk measure. */
   before: number;
   after: number;
 }

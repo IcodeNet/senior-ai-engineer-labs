@@ -9,8 +9,10 @@ export interface RetrievalRequirements {
   exactIdentifiers: boolean;
   multilingual: boolean;
   precisionCritical: boolean;
-  /** Time available for the retrieval stage, in milliseconds. */
+  /** Time available for the whole retrieval stage (search plus any rerank), in milliseconds. */
   retrievalBudgetMs: number;
+  /** Expected time of the search itself (lexical, vector or both in parallel), in milliseconds. */
+  retrievalLatencyMs: number;
   rerankLatencyMs: number;
   documentLevelAccess: boolean;
   /** How quickly a document change must be searchable. */

@@ -8,7 +8,7 @@
 - **Keyword queries and exact identifiers** (ISINs, error codes, ticket numbers) need lexical matching: BM25 finds `GB00B03MLX29`, embeddings blur it.
 - **Natural-language and multilingual questions** need semantic matching: vectors.
 - **Both** → **hybrid** with fusion (step 05).
-- **Precision-critical** answers benefit from a reranker — *if* it fits the latency budget (step 39).
+- **Precision-critical** answers benefit from a reranker — *if* search time plus rerank time fits the retrieval budget: they run one after the other, so their times add (step 39).
 - **Per-document permissions** need security trimming in the backend query (step 02), and **freshness under an hour** needs incremental indexing, not nightly rebuilds.
 
 Returning **reason codes** alongside the decision makes it reviewable: the design document can quote them, and a test pins each rule.
@@ -28,8 +28,12 @@ Implement `chooseRetrieval(req)` in `index.ts`, returning `{ strategy, reranker,
 
 1. `structuredData` → `"structured-query"`, reason `structured-source`.
 2. Otherwise, `corpusTokens <= contextWindowTokens / 2` → `"long-context"`, reason `corpus-fits-context`.
-3. Otherwise push the query-style reason (`keyword-queries`, `semantic-queries` or `mixed-queries`), then `exact-identifiers` and `multilingual` when true. Lexical is needed unless the style is natural-language without exact identifiers; semantic is needed unless the style is keyword without multilingual. Both → `"hybrid"`, lexical only → `"bm25"`, semantic only → `"vector"`.
-   If `precisionCritical`: reranker when `rerankLatencyMs <= retrievalBudgetMs` (reason `precision-critical`), otherwise no reranker (reason `rerank-over-budget`).
+3. Otherwise push the query-style reason (`keyword-queries`, `semantic-queries` or `mixed-queries`), then `exact-identifiers` and `multilingual` when true. Then decide:
+   - **lexical** matching is needed when the style is `keyword` or `mixed`, *or* there are exact identifiers;
+   - **semantic** matching is needed when the style is `natural-language` or `mixed`, *or* the corpus is multilingual;
+   - both → `"hybrid"`, lexical only → `"bm25"`, semantic only → `"vector"`.
+
+   If `precisionCritical`: reranker when `retrievalLatencyMs + rerankLatencyMs <= retrievalBudgetMs` (reason `precision-critical`), otherwise no reranker (reason `rerank-over-budget`).
 4. For any strategy: `documentLevelAccess` → control `security-trimming`, reason `document-acl`.
 5. For index-based strategies (`bm25`, `vector`, `hybrid`) with `freshnessMinutes < 60` → control `incremental-indexing`, reason `near-real-time`.
 

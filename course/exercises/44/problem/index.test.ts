@@ -63,5 +63,10 @@ test("sensitivity analysis shows which weight change would flip the decision", (
     robust: false,
     flips: [{ criterion: "quality", direction: "increase", winner: "hosted-large" }],
   });
+  // Lowering a weight can flip the decision too; flips are listed in criterion order, increase before decrease.
+  assert.deepEqual(sensitivity(options, criteria, 0.4).flips, [
+    { criterion: "quality", direction: "increase", winner: "hosted-large" },
+    { criterion: "costPerMillion", direction: "decrease", winner: "hosted-large" },
+  ]);
   assert.throws(() => sensitivity(options, criteria, 1), RangeError);
 });

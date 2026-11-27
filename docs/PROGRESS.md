@@ -20,7 +20,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
 
 ## In progress
-- [ ] Course Lab 04 — agent engineering and MCP, steps 22–29: implemented and verified locally on branch `lab-04-agents-mcp`; CI evidence pending (entry dated 2026-11-27, Lab 04).
+- [ ] Course Lab 04 — agent engineering and MCP, steps 22–29: implemented and verified locally and in CI on branch `lab-04-agents-mcp` (PR #12); not yet merged (entry dated 2026-11-27, Lab 04).
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
 
 ## Next actions
@@ -76,7 +76,7 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 - Implemented on branch `lab-04-agents-mcp` (not yet on `main`): course steps 22–29 — tool schemas and argument validation, the tool-calling loop with step/tool-call/repeat limits, error classification with capped backoff and idempotency keys, a plan-and-execute state machine with bounded replanning, a human-approval gate (argument-bound, four-eyes, expiry, single use, audit), an MCP server (tools, resource template, prompt) built with the official SDK, a hand-written MCP client (handshake, version negotiation, capability gating, pagination, tool vs protocol errors), and trajectory evaluation with prompt-injection cases. Module `lab-04-agents-mcp` appended to `course.json`.
 - Dependency: `@modelcontextprotocol/sdk` 1.32.2 (exact) added to `course/package.json`; `package-lock.json` regenerated with npm. Step 27 and the step 28 interop test import `zod`, which the SDK installs as its own dependency; it is not declared separately.
 - Local evidence (this session, not CI): `npm run setup`, `typecheck`, `validate` (29 steps), `test:tools`, and engine acceptance passed — 58 variants as expected (each Lab 04 starter fails on `Not implemented`, each solution passes: 22: 7, 23: 9, 24: 9, 25: 9, 26: 8, 27: 8, 28: 8, 29: 10 tests) and the learner journey; `pnpm --filter @labs/agent-factory test` 12 passed; factory review of the course reported 0 findings. Browser acceptance not run locally (no Chromium in the agent sandbox); CI is the gate.
-- CI: pending on the pull request; to be recorded when the `verify`, `course` and Agent Factory Review runs complete.
+- CI verified on PR #12 head `dc0a41d` (branch, not `main`): CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073532766 — `verify` and `course` passed, including engine acceptance (29 steps, 58 variants, learner journey) and browser acceptance (all 29 lessons open); Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073532746 — 76 changed paths, 0 findings. Not merged; `main` does not yet contain Lab 04.
 - Not covered: real models (all model turns are scripted fakes), MCP over stdio or HTTP, authentication of MCP servers. No Azure resources provisioned.
 
 ## Update protocol

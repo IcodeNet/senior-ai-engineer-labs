@@ -106,7 +106,9 @@ function requireRecordedSubscription(ctx) {
 
 async function retail(filter) {
   const items = [];
-  let url = `https://prices.azure.com/api/retail/prices?$filter=${encodeURIComponent(filter)}`;
+  // ICODE_AZURE_PRICES_API lets offline tests point at an unreachable address; learners never need it.
+  const api = process.env.ICODE_AZURE_PRICES_API || "https://prices.azure.com/api/retail/prices";
+  let url = `${api}?$filter=${encodeURIComponent(filter)}`;
   for (let page = 0; url && page < 10; page++) {
     const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`Retail Prices API returned ${response.status}`);

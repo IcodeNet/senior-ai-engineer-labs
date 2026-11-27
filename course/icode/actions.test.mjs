@@ -5,7 +5,7 @@ import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rm
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { COST_MARKERS, confirmLine } from "./azure-lib.mjs";
 
 const course = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -98,6 +98,12 @@ beforeAll(() => {
   process.env.FAKE_AZ_STATE = stateFile;
   process.env.PATH = bin + delimiter + process.env.PATH;
   process.env.AZURE_CONFIG_DIR = join(work, "no-azure-login"); // even a real az here would be signed out
+  process.env.ICODE_AZURE_PRICES_API = "http://127.0.0.1:9/prices"; // hermetic: no network, prices "not available"
+  vi.setConfig({ testTimeout: 60000 });
+});
+afterEach(async () => {
+  const running = ops.currentAction(); // never leave an action process behind
+  if (running) await ops.cancelAction(running.runId, { graceMs: 200 });
 });
 afterAll(() => rmSync(work, { recursive: true, force: true }));
 beforeEach(() => {

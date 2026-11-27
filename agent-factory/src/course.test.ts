@@ -88,6 +88,13 @@ it('flags the wrong test runner and lessons without an interview question', () =
   ]);
 });
 
+it('flags files and folders outside lab.json, README.md, problem/ and solution/ in a step', () => {
+  const root = course({ '01': step({ 'index.ts': 'export const f = () => 1;\n', 'notes/todo.md': 'x' }), '02': step() });
+  mkdirSync(join(root, 'course/exercises/02/node_modules/.vite'), { recursive: true });
+  writeFileSync(join(root, 'course/exercises/02/.DS_Store'), '');
+  expect(rules(root)).toEqual(['course-step-layout course/exercises/01/index.ts', 'course-step-layout course/exercises/01/notes']);
+});
+
 it('the repository course passes its own structural review', () => {
   const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   expect(reviewCourse(repo)).toEqual([]);

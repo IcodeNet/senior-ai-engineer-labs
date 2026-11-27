@@ -118,7 +118,11 @@ export function transition(state: AgentState, event: AgentEvent, maxReplans: num
       for (const id of order) {
         const step = event.plan.find((candidate) => candidate.id === id)!;
         const done = Object.hasOwn(state.completed, step.id) ? state.completed[step.id] : undefined;
-        if (done && done.tool === step.tool && isDeepStrictEqual(done.args, resolveArgs(step, results))) results[step.id] = done.result;
+        // Every dependency must already be reused (an own key in results, even if its value is undefined): a missing
+        // result and a result of undefined resolve to the same arguments, so values alone cannot tell them apart.
+        const inputsReady = step.dependsOn.every((dep) => Object.hasOwn(results, dep));
+        if (done && inputsReady && done.tool === step.tool && isDeepStrictEqual(done.args, resolveArgs(step, results)))
+          results[step.id] = done.result;
       }
       if (event.plan.every((step) => Object.hasOwn(results, step.id))) return { status: "done", results };
       return { status: "executing", plan: event.plan, results, replans: state.replans, completed: state.completed };

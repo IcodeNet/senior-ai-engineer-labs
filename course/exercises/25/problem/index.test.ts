@@ -235,3 +235,36 @@ test("a replanned plan made entirely of completed steps is done at once", { time
   assert.deepEqual(executed, ["get_policy", "convert_currency"]);
   assert.deepEqual(result.state, { status: "done", results: { policy: "cap 40" } });
 });
+
+test("a dependant is never reused while its dependency re-runs, even if that dependency returned undefined", { timeout: 2000 }, async () => {
+  const plan = (topic: string): Plan => [
+    step("a", "get_policy", [], { topic }),
+    step("b", "convert_currency", ["a"], { x: { $from: "a" } }),
+    step("c", "submit_expense", ["b"]),
+  ];
+  let plans = 0;
+  let submits = 0;
+  const executed: string[] = [];
+  const result = await runPlan("goal", {
+    planner: async () => plan(++plans === 1 ? "meals" : "travel"),
+    toolNames: tools,
+    execute: async (tool, args) => {
+      executed.push(tool);
+      if (tool === "get_policy") return plans === 1 ? undefined : "real";
+      if (tool === "convert_currency") return `saw ${String(args.x)}`;
+      if (++submits === 1) throw new Error("ledger down");
+      return "ok";
+    },
+  });
+  assert.deepEqual(executed, ["get_policy", "convert_currency", "submit_expense", "get_policy", "convert_currency", "submit_expense"]);
+  assert.deepEqual(result.state, { status: "done", results: { a: "real", b: "saw real", c: "ok" } });
+
+  const planning: AgentState = {
+    status: "planning",
+    replans: 1,
+    feedback: [],
+    completed: { a: { tool: "get_policy", args: {}, result: undefined }, b: { tool: "convert_currency", args: { x: undefined }, result: "stale" } },
+  };
+  const reused = transition(planning, { type: "plan", plan: [step("a", "get_policy"), step("b", "convert_currency", ["a"], { x: { $from: "a" } })] }, 1);
+  assert.deepEqual(reused, { status: "done", results: { a: undefined, b: "stale" } }, "an undefined result is still a result");
+});

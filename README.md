@@ -47,7 +47,7 @@ Details, verification commands and the authoring guide: [`course/README.md`](cou
 
 ## The review factory
 
-A deterministic reviewer that runs on every pull request and every push to `main`. It checks changed paths (agent-rule changes, engine pin changes, teaching code outside the course) and the whole course structure (every step registered, identical tests in starter and solution, starters that fail on stubs, solutions without stubs, the Vitest runner, an interview question per lesson). It publishes a findings table in the job summary and an `agent-review.json` artifact.
+A deterministic reviewer that runs on every pull request and every push to `main`. It checks changed paths (agent-rule changes, engine pin changes, teaching code outside the course) and the whole course structure (every step registered, nothing stray in a step folder, identical tests in starter and solution, starters that fail on stubs, solutions without stubs, the Vitest runner, an interview question per lesson). It publishes a findings table in the job summary and an `agent-review.json` artifact.
 
 It is **report-only** and **not** an independent or AI reviewer: findings never fail a build until their precision has been measured. Rules and roadmap: [`agent-factory/README.md`](agent-factory/README.md).
 

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Resilience: timeouts, retries, circuit breaker, fallback",
+  "description": "Bound every model call with a timeout, retry transient failures with jittered backoff, stop calling a failing dependency and degrade gracefully.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

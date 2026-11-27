@@ -126,6 +126,38 @@
       ]
     },
     {
+      "id": "lab-05-production-ai",
+      "title": "Lab 05 \u00b7 Production AI (local)",
+      "exercises": [
+        {
+          "id": "prod-security",
+          "title": "Access control, PII and prompt injection",
+          "steps": [
+            "30",
+            "31",
+            "32"
+          ]
+        },
+        {
+          "id": "prod-reliability",
+          "title": "Resilience, limits and caching",
+          "steps": [
+            "33",
+            "34",
+            "35"
+          ]
+        },
+        {
+          "id": "prod-operations",
+          "title": "Observability and release safety",
+          "steps": [
+            "36",
+            "37"
+          ]
+        }
+      ]
+    },
+    {
       "id": "lab-06-architecture-drills",
       "title": "Lab 06 \u00b7 Architecture and interview drills (local)",
       "exercises": [

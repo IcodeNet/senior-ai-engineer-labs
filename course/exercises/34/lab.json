@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Rate limits and token budgets per user",
+  "description": "Token-bucket rate limiting and daily token budgets with reservations that are settled against actual usage.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

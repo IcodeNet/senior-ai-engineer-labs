@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "PII detection and redaction",
+  "description": "Detect emails, validated card numbers, IBANs and National Insurance numbers, and replace them with reversible placeholders before prompts and logs.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

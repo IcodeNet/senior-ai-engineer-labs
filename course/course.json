@@ -4,13 +4,90 @@
   "modules": [
     {
       "id": "lab-01-azure-ai-search-rag",
-      "title": "Lab 01 · Azure AI Search and RAG (local)",
+      "title": "Lab 01 \u00b7 Azure AI Search and RAG (local)",
       "exercises": [
-        { "id": "indexing", "title": "Indexing and governance", "steps": ["01", "02"] },
-        { "id": "retrieval", "title": "Lexical, vector and hybrid retrieval", "steps": ["03", "04", "05"] },
-        { "id": "grounding", "title": "Grounded generation", "steps": ["06"] },
-        { "id": "evaluation", "title": "Retrieval evaluation", "steps": ["07"] },
-        { "id": "orchestration", "title": "RAG orchestration", "steps": ["08"] }
+        {
+          "id": "indexing",
+          "title": "Indexing and governance",
+          "steps": [
+            "01",
+            "02"
+          ]
+        },
+        {
+          "id": "retrieval",
+          "title": "Lexical, vector and hybrid retrieval",
+          "steps": [
+            "03",
+            "04",
+            "05"
+          ]
+        },
+        {
+          "id": "grounding",
+          "title": "Grounded generation",
+          "steps": [
+            "06"
+          ]
+        },
+        {
+          "id": "evaluation",
+          "title": "Retrieval evaluation",
+          "steps": [
+            "07"
+          ]
+        },
+        {
+          "id": "orchestration",
+          "title": "RAG orchestration",
+          "steps": [
+            "08"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lab-02-evaluation-engineering",
+      "title": "Lab 02 \u00b7 Evaluation engineering (local)",
+      "exercises": [
+        {
+          "id": "datasets",
+          "title": "Golden datasets",
+          "steps": [
+            "09"
+          ]
+        },
+        {
+          "id": "retrieval-evals",
+          "title": "Retrieval evaluation",
+          "steps": [
+            "10"
+          ]
+        },
+        {
+          "id": "generation-evals",
+          "title": "Generation evaluation",
+          "steps": [
+            "11",
+            "12",
+            "13"
+          ]
+        },
+        {
+          "id": "decisions",
+          "title": "Decisions and gates",
+          "steps": [
+            "14",
+            "15"
+          ]
+        },
+        {
+          "id": "operations",
+          "title": "Cost and latency",
+          "steps": [
+            "16"
+          ]
+        }
       ]
     }
   ]

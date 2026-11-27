@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Is it really better? Paired bootstrap comparison",
+  "description": "Decide whether a change improved per-query scores using a seeded paired bootstrap confidence interval.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

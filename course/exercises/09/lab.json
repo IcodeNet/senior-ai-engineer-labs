@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Labelled evaluation datasets",
+  "description": "Validate a golden retrieval dataset and split it deterministically without leaking queries between dev and test.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

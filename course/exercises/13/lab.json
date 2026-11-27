@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Calibrating the judge against humans",
+  "description": "Measure judge agreement with human labels using exact agreement, Cohen's kappa and the false-pass rate.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

@@ -52,6 +52,12 @@ The Lab 01 README now specifies local provider architecture, an optional simulat
 - Not covered: Fastify/React integration, Azure AI Search, real embeddings or models, measured results. Browser acceptance cannot run in the agent sandbox (no Chromium); CI is the gate.
 - No Azure resources provisioned.
 
+## Lab 02 evaluation engineering (2026-11-27)
+- Decision: teach only through Icode Workshop; `labs/` holds specifications, infrastructure and results.
+- Implemented: course steps 09–16 (datasets, retrieval harness, groundedness checks, LLM judge, judge calibration, paired bootstrap, regression gates, cost/latency) and `labs/02-evaluation-engineering/README.md`.
+- Local evidence (this session, not CI): typecheck, validate (16 steps) and engine acceptance passed — 32 variants as expected and the learner journey.
+- Pending: CI evidence for this change; real-model judging and measured results not implemented. No Azure resources provisioned.
+
 ## Verification and constraints
 Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.
 

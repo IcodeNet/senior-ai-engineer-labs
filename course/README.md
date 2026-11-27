@@ -35,8 +35,16 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 06 | Grounded prompts, citations and abstention | Untrusted-context prompts, escaping, evidence gate, citation checks |
 | 07 | Measuring retrieval | Precision@K, Recall@K, MRR, NDCG@K |
 | 08 | RAG orchestration with defence in depth | Retrieve → re-check eligibility → gate → generate → validate citations |
+| 09 | Labelled evaluation datasets | Dataset validation, leakage checks, deterministic dev/test splits |
+| 10 | A retrieval evaluation harness | Per-query and mean metrics, worst cases, one retrieval pass for many K |
+| 11 | Citation coverage and groundedness checks | Per-sentence citation, source, number and lexical-support checks |
+| 12 | LLM-as-judge with strict parsing | Rubric prompts, strict verdict parsing, bounded retries, position-bias check |
+| 13 | Calibrating the judge against humans | Exact and within-one agreement, Cohen's κ, false-pass rate |
+| 14 | Is it really better? Paired bootstrap comparison | Seeded paired bootstrap confidence intervals and decisions |
+| 15 | Regression gates in CI | Floors, ceilings, tolerances, missing metrics, baseline ratchet |
+| 16 | Cost and latency accounting | Token cost, nearest-rank P50/P95, monthly projection, budget check |
 
-This is **Lab 01, phases 1–2 (local)**. It does not cover Azure AI Search itself, semantic reranking, real embeddings or real model calls; those belong to the optional, cost-gated Azure phase in `labs/01-azure-ai-search-rag/README.md`.
+Steps 01–08 are **Lab 01, phases 1–2 (local)**; steps 09–16 are **Lab 02, evaluation engineering (local)**. Models, judges and retrievers are injected interfaces exercised with deterministic fakes. The course does not cover Azure AI Search itself, semantic reranking, real embeddings or real model calls; those belong to optional, cost-gated phases described in `labs/`. All teaching happens in this course; `labs/` holds specifications, infrastructure and results only.
 
 ## Verification
 

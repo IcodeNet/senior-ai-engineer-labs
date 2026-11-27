@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "A retrieval evaluation harness",
+  "description": "Run a retriever over a labelled set, report per-query and mean metrics, and compare K values from a single retrieval pass.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

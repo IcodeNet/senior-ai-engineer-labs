@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "LLM-as-judge with strict parsing",
+  "description": "Grade answers with a model judge that must return valid structured verdicts, retry safely and detect position bias.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

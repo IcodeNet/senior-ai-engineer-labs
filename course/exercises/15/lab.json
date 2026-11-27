@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Regression gates in CI",
+  "description": "Fail a build when quality, latency or cost cross absolute limits or worsen beyond tolerance against a stored baseline.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

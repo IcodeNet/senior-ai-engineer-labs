@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Citation coverage and groundedness checks",
+  "description": "Check every sentence of a generated answer for citations, valid sources, supported numbers and lexical support.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

@@ -76,4 +76,4 @@ A lab is complete when it runs locally, explains its design decisions, includes 
 
 ## Current status
 
-Lab 01 phases 1–2 are available as an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course in [`course/`](course/README.md): eight TypeScript steps from chunking to RAG orchestration, run locally at no cost (`cd course && npm run setup && npm start`). Azure integration, the shared Fastify/React application and measured results are still to come. Quality and performance claims will be made only after measurement.
+Lab 01 phases 1–2 (steps 01–08) and Lab 02 evaluation engineering (steps 09–16) are available as an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course in [`course/`](course/README.md): sixteen TypeScript steps from chunking to CI regression gates, run locally at no cost (`cd course && npm run setup && npm start`). All teaching happens in Icode Workshop. Azure integration, real model judging and measured results are still to come. Quality and performance claims will be made only after measurement.

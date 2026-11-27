@@ -165,3 +165,73 @@ test("runPlan never re-submits an expense when a later step fails and the plan i
   assert.deepEqual(executed, ["get_policy", "convert_currency", "submit_expense", "notify_manager", "notify_manager"]);
   assert.deepEqual(result.state, { status: "done", results: { policy: "ok", fx: "ok", submit: "clm-1", notify: "sent clm-1" } });
 });
+
+test("step IDs that are Object.prototype names are ordinary IDs", { timeout: 2000 }, async () => {
+  const plan: Plan = [step("toString", "get_policy"), step("constructor", "convert_currency", ["toString"], { policy: { $from: "toString" } })];
+  assert.deepEqual(validatePlan(plan, tools), []);
+  let state = transition(initialState, { type: "plan", plan }, 1);
+  assert.equal(state.status, "executing", "an inherited name is not a completed result");
+  state = transition(state, { type: "step-succeeded", stepId: "toString", result: 1 }, 1);
+  assert.equal(state.status, "executing", "constructor has not run yet");
+  state = transition(state, { type: "step-succeeded", stepId: "constructor", result: 2 }, 1);
+  assert.equal(state.status, "done");
+  const executed: string[] = [];
+  const result = await runPlan("goal", { planner: async () => plan, toolNames: tools, execute: async (tool) => (executed.push(tool), `${tool}-ok`) });
+  assert.deepEqual(executed, ["get_policy", "convert_currency"], "neither step may be mistaken for already done");
+  assert.deepEqual(result.state, { status: "done", results: { toString: "get_policy-ok", constructor: "convert_currency-ok" } });
+});
+
+test("a reused step must have the same tool and the same resolved inputs", { timeout: 2000 }, async () => {
+  const fxPlan = (usd: number): Plan => [
+    step("fx", "convert_currency", [], { amount: usd, from: "USD", to: "GBP" }),
+    step("submit", "submit_expense", ["fx"], { converted: { $from: "fx" } }),
+    step("notify", "notify_manager", ["submit"], { claim: { $from: "submit" } }),
+  ];
+  const executed: string[] = [];
+  let plans = 0;
+  let notifies = 0;
+  const result = await runPlan("goal", {
+    planner: async () => fxPlan(++plans === 1 ? 50 : 500),
+    toolNames: [...tools, "notify_manager"],
+    execute: async (tool, args) => {
+      executed.push(`${tool}:${JSON.stringify(args)}`);
+      if (tool === "convert_currency") return Number(args.amount) * 0.8;
+      if (tool === "submit_expense") return `claim for ${String(args.converted)}`;
+      if (++notifies === 1) throw new Error("mail down");
+      return `sent ${String(args.claim)}`;
+    },
+  });
+  assert.deepEqual(result.state, { status: "done", results: { fx: 400, submit: "claim for 400", notify: "sent claim for 400" } });
+  assert.equal(executed.filter((e) => e.startsWith("submit_expense")).length, 2, "fx changed, so submit's input changed and it ran again");
+
+  let state = transition(initialState, { type: "plan", plan: [step("a", "get_policy", [], { topic: "meals" })] }, 1);
+  state = transition(state, { type: "step-succeeded", stepId: "a", result: 1 }, 1);
+  const planning: AgentState = { status: "planning", replans: 1, feedback: [], completed: { a: { tool: "get_policy", args: { topic: "meals" }, result: 1 } } };
+  const otherTool = transition(planning, { type: "plan", plan: [step("a", "submit_expense", [], { topic: "meals" })] }, 1);
+  assert.equal(otherTool.status, "executing", "same ID and arguments but a different tool is a different action");
+  assert.equal(state.status, "done");
+});
+
+test("a replanned plan made entirely of completed steps is done at once", { timeout: 2000 }, async () => {
+  const planning: AgentState = {
+    status: "planning",
+    replans: 1,
+    feedback: [],
+    completed: { policy: { tool: "get_policy", args: { topic: "meals" }, result: "cap 40" } },
+  };
+  assert.deepEqual(transition(planning, { type: "plan", plan: [expensePlan[0]] }, 1), { status: "done", results: { policy: "cap 40" } });
+
+  let plans = 0;
+  const executed: string[] = [];
+  const result = await runPlan("goal", {
+    planner: async () => (++plans === 1 ? expensePlan.slice(0, 2) : expensePlan.slice(0, 1)),
+    toolNames: tools,
+    execute: async (tool) => {
+      executed.push(tool);
+      if (tool === "convert_currency") throw new Error("rates down");
+      return "cap 40";
+    },
+  });
+  assert.deepEqual(executed, ["get_policy", "convert_currency"]);
+  assert.deepEqual(result.state, { status: "done", results: { policy: "cap 40" } });
+});

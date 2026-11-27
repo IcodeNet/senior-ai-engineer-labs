@@ -4,7 +4,8 @@ import { ApprovalGate, argsHash, needsApproval, principalOf, type ToolPolicy } f
 
 const policies: ToolPolicy[] = [
   { name: "get_policy", impact: "read" },
-  { name: "submit_expense", impact: "write", approvalThreshold: { field: "amount", amount: 500, windowMs: 60_000 } },
+  { name: "submit_expense", impact: "write", approvalThreshold: { field: "amountPence", amount: 50_000, windowMs: 60_000 } },
+  { name: "book_travel", impact: "write", approvalThreshold: { field: "amountPence", amount: 50_000, windowMs: 60_000 } },
   { name: "update_profile", impact: "write" },
   { name: "issue_refund", impact: "irreversible" },
 ];
@@ -29,21 +30,23 @@ const refund = { claimId: "clm-7", amount: 120, currency: "GBP" };
 
 test("approval policy: reads never, irreversible always, writes above a threshold, unknown tools fail closed", () => {
   assert.equal(needsApproval(policies[0], {}), false);
-  assert.equal(needsApproval(policies[1], { amount: 499.99 }), false);
-  assert.equal(needsApproval(policies[1], { amount: 500 }), true);
-  assert.equal(needsApproval(policies[1], { amount: "lots" }), true, "a non-numeric amount cannot be trusted below the threshold");
+  assert.equal(needsApproval(policies[1], { amountPence: 49_999 }), false);
+  assert.equal(needsApproval(policies[1], { amountPence: 50_000 }), true);
+  assert.equal(needsApproval(policies[1], { amountPence: "lots" }), true, "a non-numeric amount cannot be trusted below the threshold");
+  for (const bad of [0, -10_000, 12.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])
+    assert.equal(needsApproval(policies[1], { amountPence: bad }), true, `${bad} is not a positive whole number of pence`);
   assert.equal(needsApproval(policies[1], {}), true);
-  assert.equal(needsApproval(policies[2], {}), true, "a write without a threshold always needs approval");
-  assert.equal(needsApproval(policies[3], { amount: 1 }), true);
+  assert.equal(needsApproval(policies[3], {}), true, "a write without a threshold always needs approval");
+  assert.equal(needsApproval(policies[4], { amount: 1 }), true);
   assert.equal(needsApproval(undefined, {}), true);
-  assert.equal(needsApproval(policies[1], { amount: 100 }, 400), true, "what was already spent counts towards the threshold");
-  assert.equal(needsApproval(policies[1], { amount: 100 }, 399), false);
+  assert.equal(needsApproval(policies[1], { amountPence: 10_000 }, 40_000), true, "what was already spent counts towards the threshold");
+  assert.equal(needsApproval(policies[1], { amountPence: 10_000 }, 39_999), false);
 });
 
 test("low-impact calls run immediately and are audited", async () => {
   const { gate, executed } = setup();
   assert.deepEqual(await gate.invoke("get_policy", { topic: "meals" }, "agent:alice"), { status: "executed", result: "get_policy done" });
-  assert.deepEqual(await gate.invoke("submit_expense", { amount: 40 }, "agent:alice"), { status: "executed", result: "submit_expense done" });
+  assert.deepEqual(await gate.invoke("submit_expense", { amountPence: 4_000 }, "agent:alice"), { status: "executed", result: "submit_expense done" });
   assert.equal(executed.length, 2);
   assert.deepEqual(gate.audit, [
     { at: 1_000, event: "auto-executed", tool: "get_policy", actor: "agent:alice" },
@@ -109,6 +112,7 @@ test("four-eyes: the requester cannot approve their own request", async () => {
 
 test("four-eyes holds through an agent: alice cannot approve what her agent requested, and agents cannot approve", async () => {
   assert.equal(principalOf("agent:alice"), "alice");
+  assert.equal(principalOf("agent:agent:alice"), "alice", "nested agent prefixes still lead to alice");
   const { gate } = setup();
   await gate.invoke("issue_refund", refund, "agent:alice");
   assert.throws(() => gate.decide("apr-1", { approver: "alice", approve: true }), { message: "requester cannot approve their own request" });
@@ -119,17 +123,55 @@ test("four-eyes holds through an agent: alice cannot approve what her agent requ
 test("splitting a payment below the threshold is caught by the per-principal running total", async () => {
   const { gate, executed, advance } = setup();
   const results = [];
-  for (let i = 0; i < 5; i++) results.push((await gate.invoke("submit_expense", { amount: 120 }, i % 2 ? "alice" : "agent:alice")).status);
-  assert.deepEqual(results, ["executed", "executed", "executed", "executed", "pending"], "480 auto-approved; the fifth would reach 600");
-  assert.equal((await gate.invoke("submit_expense", { amount: 120 }, "carol")).status, "executed", "another person's total is separate");
+  for (let i = 0; i < 5; i++) results.push((await gate.invoke("submit_expense", { amountPence: 12_000 }, i % 2 ? "alice" : "agent:alice")).status);
+  assert.deepEqual(results, ["executed", "executed", "executed", "executed", "pending"], "£480 auto-approved; the fifth would reach £600");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 12_000 }, "carol")).status, "executed", "another person's total is separate");
+  assert.equal((await gate.invoke("book_travel", { amountPence: 12_000 }, "alice")).status, "executed", "each tool keeps its own total");
   advance(60_000);
-  assert.equal((await gate.invoke("submit_expense", { amount: 120 }, "alice")).status, "executed", "the window has passed");
-  assert.equal(executed.length, 6);
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 12_000 }, "alice")).status, "executed", "the window has passed");
+  assert.equal(executed.length, 7);
+});
+
+test("negative or invalid amounts never earn credit against the running total", async () => {
+  const { gate, executed } = setup();
+  assert.equal((await gate.invoke("submit_expense", { amountPence: -1_000_000 }, "alice")).status, "pending");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: Number.NaN }, "alice")).status, "pending");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 45_000 }, "alice")).status, "executed");
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 9_000 }, "alice")).status, "pending", "£450 + £90 reaches £500");
+  assert.equal(executed.length, 1);
+});
+
+test("concurrent calls reserve their amount before running, so they cannot all slip under the threshold", async () => {
+  const pending: (() => void)[] = [];
+  const gate = new ApprovalGate({
+    policies,
+    now: () => 1_000,
+    execute: () => new Promise((resolve) => pending.push(() => resolve("ok"))),
+  });
+  const calls = [1, 2, 3, 4, 5].map(() => gate.invoke("submit_expense", { amountPence: 12_000 }, "alice"));
+  await new Promise((r) => setTimeout(r, 0));
+  pending.forEach((finish) => finish());
+  assert.deepEqual((await Promise.all(calls)).map((r) => r.status), ["executed", "executed", "executed", "executed", "pending"]);
+});
+
+test("a failed auto-executed call releases its reservation", async () => {
+  let fail = true;
+  const gate = new ApprovalGate({
+    policies,
+    now: () => 1_000,
+    execute: async () => {
+      if (fail) throw new Error("ledger down");
+      return "ok";
+    },
+  });
+  await assert.rejects(gate.invoke("submit_expense", { amountPence: 45_000 }, "alice"), { message: "ledger down" });
+  fail = false;
+  assert.equal((await gate.invoke("submit_expense", { amountPence: 45_000 }, "alice")).status, "executed", "the failed £450 does not count");
 });
 
 test("the audit records failed executions as failures, and a failed approval is still used up", async () => {
   const { gate } = setup(undefined, (tool) => tool !== "get_policy");
-  await assert.rejects(gate.invoke("submit_expense", { amount: 10 }, "alice"), { message: "submit_expense failed downstream" });
+  await assert.rejects(gate.invoke("submit_expense", { amountPence: 1_000 }, "alice"), { message: "submit_expense failed downstream" });
   await gate.invoke("issue_refund", refund, "alice");
   gate.decide("apr-1", { approver: "bob", approve: true });
   await assert.rejects(gate.executeApproved("apr-1", refund), { message: "issue_refund failed downstream" });

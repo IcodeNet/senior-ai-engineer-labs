@@ -13,6 +13,7 @@ export type Plan = PlanStep[];
 /** A step that already ran (and so already had its side effects), kept across replans. */
 export interface CompletedStep {
   tool: string;
+  /** The resolved arguments it ran with (`$from` references replaced by results). */
   args: Record<string, unknown>;
   result: unknown;
 }
@@ -49,6 +50,16 @@ export function reference(value: unknown): string | undefined {
     return typeof from === "string" ? from : undefined;
   }
   return undefined;
+}
+
+/** A step's arguments with every `{ "$from": id }` replaced by that step's result (undefined if it has none yet). */
+export function resolveArgs(step: PlanStep, results: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(step.args).map(([key, value]) => {
+      const from = reference(value);
+      return [key, from === undefined ? value : Object.hasOwn(results, from) ? results[from] : undefined];
+    }),
+  );
 }
 
 export function executionOrder(plan: Plan): string[] | null {

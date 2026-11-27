@@ -166,3 +166,16 @@ test("model failures are not swallowed", async () => {
   const model: Model = async () => Promise.reject(new Error("429 from model provider"));
   await assert.rejects(runAgent("hi", options(model, [fxTool()])), { message: "429 from model provider" });
 });
+
+test("when a limit stops the run mid-turn, every remaining call in that turn is answered", async () => {
+  const fx = fxTool();
+  const { model } = scripted([{ type: "tool_calls", calls: [1, 2, 3, 4].map((n) => call(`c${n}`, { amount: n, from: "EUR", to: "GBP" })) }]);
+  const result = await runAgent("Convert four", options(model, [fx], { maxToolCalls: 1 }));
+  assert.equal(result.stopReason, "max-tool-calls");
+  assert.equal(fx.calls.length, 1);
+  assert.deepEqual(
+    result.messages.filter((m) => m.role === "tool").map((m) => (m.role === "tool" ? `${m.toolCallId}:${m.content}` : "")),
+    ["c1:" + JSON.stringify({ amount: 0.8, currency: "GBP" }), "c2:Not executed: tool-call budget exhausted", "c3:Not executed: tool-call budget exhausted", "c4:Not executed: tool-call budget exhausted"],
+  );
+  assertEveryCallAnswered(result.messages);
+});

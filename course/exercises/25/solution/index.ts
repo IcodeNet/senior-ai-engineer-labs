@@ -13,6 +13,7 @@ export type Plan = PlanStep[];
 /** A step that already ran (and so already had its side effects), kept across replans. */
 export interface CompletedStep {
   tool: string;
+  /** The resolved arguments it ran with (`$from` references replaced by results). */
   args: Record<string, unknown>;
   result: unknown;
 }
@@ -49,6 +50,16 @@ export function reference(value: unknown): string | undefined {
     return typeof from === "string" ? from : undefined;
   }
   return undefined;
+}
+
+/** A step's arguments with every `{ "$from": id }` replaced by that step's result (undefined if it has none yet). */
+export function resolveArgs(step: PlanStep, results: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(step.args).map(([key, value]) => {
+      const from = reference(value);
+      return [key, from === undefined ? value : Object.hasOwn(results, from) ? results[from] : undefined];
+    }),
+  );
 }
 
 export function executionOrder(plan: Plan): string[] | null {
@@ -100,10 +111,14 @@ export function transition(state: AgentState, event: AgentEvent, maxReplans: num
 
   if (state.status === "planning") {
     if (event.type === "plan") {
+      // Reuse a completed step only if it would run with exactly the same resolved inputs: walking in dependency
+      // order means a re-run upstream step leaves its dependants' `$from` inputs unresolved, so they re-run too.
       const results: Record<string, unknown> = {};
-      for (const step of event.plan) {
+      const order = executionOrder(event.plan) ?? event.plan.map((step) => step.id);
+      for (const id of order) {
+        const step = event.plan.find((candidate) => candidate.id === id)!;
         const done = Object.hasOwn(state.completed, step.id) ? state.completed[step.id] : undefined;
-        if (done && done.tool === step.tool && isDeepStrictEqual(done.args, step.args)) results[step.id] = done.result;
+        if (done && done.tool === step.tool && isDeepStrictEqual(done.args, resolveArgs(step, results))) results[step.id] = done.result;
       }
       if (event.plan.every((step) => Object.hasOwn(results, step.id))) return { status: "done", results };
       return { status: "executing", plan: event.plan, results, replans: state.replans, completed: state.completed };
@@ -121,7 +136,7 @@ export function transition(state: AgentState, event: AgentEvent, maxReplans: num
       return replanOrFail(state.replans, [message], message, state.completed);
     }
     const results = { ...state.results, [event.stepId]: event.result };
-    const completed = { ...state.completed, [event.stepId]: { tool: step.tool, args: step.args, result: event.result } };
+    const completed = { ...state.completed, [event.stepId]: { tool: step.tool, args: resolveArgs(step, state.results), result: event.result } };
     if (state.plan.every((candidate) => Object.hasOwn(results, candidate.id))) return { status: "done", results };
     return { ...state, results, completed };
   }
@@ -145,23 +160,20 @@ export async function runPlan(goal: string, options: RunOptions): Promise<{ stat
       continue;
     }
     const executing: Extract<AgentState, { status: "executing" }> = state;
+    const eventsBefore = events.length;
     for (const id of executionOrder(executing.plan) ?? []) {
       const current: AgentState = state;
       if (current.status !== "executing") break;
       if (Object.hasOwn(current.results, id)) continue; // already ran before a replan: do not repeat its side effects
       const step = executing.plan.find((candidate) => candidate.id === id)!;
-      const args = Object.fromEntries(
-        Object.entries(step.args).map(([key, value]) => {
-          const from = reference(value);
-          return [key, from === undefined ? value : current.results[from]];
-        }),
-      );
       try {
-        apply({ type: "step-succeeded", stepId: id, result: await execute(step.tool, args) });
+        apply({ type: "step-succeeded", stepId: id, result: await execute(step.tool, resolveArgs(step, current.results)) });
       } catch (error) {
         apply({ type: "step-failed", stepId: id, error: error instanceof Error ? error.message : String(error) });
       }
     }
+    // A pass that emits no event can never finish: fail loudly instead of spinning forever.
+    if (events.length === eventsBefore) throw new Error("runPlan made no progress");
   }
   return { state, events };
 }

@@ -79,10 +79,11 @@ export async function listAllTools(session: Session, maxPages = 10): Promise<Mcp
   const tools: McpTool[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < maxPages; page++) {
-    const result = await session.rpc.request<{ tools: McpTool[]; nextCursor?: string }>("tools/list", cursor === undefined ? {} : { cursor });
+    const result = await session.rpc.request<{ tools: McpTool[]; nextCursor?: unknown }>("tools/list", cursor === undefined ? {} : { cursor });
     tools.push(...result.tools);
+    // Cursors are opaque strings: "" is a valid cursor. A missing (or non-compliant null) nextCursor ends the list.
+    if (typeof result.nextCursor !== "string") return tools;
     cursor = result.nextCursor;
-    if (cursor === undefined) return tools; // cursors are opaque: "" is a valid cursor, only its absence ends the list
   }
   throw new Error(`more than ${maxPages} pages of tools`);
 }

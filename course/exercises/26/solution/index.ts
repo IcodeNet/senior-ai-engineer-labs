@@ -8,7 +8,8 @@ export interface ToolPolicy {
   impact: Impact;
   /**
    * For `write` tools: approval is needed when `args[field]`, plus what the same principal already spent with this
-   * tool inside `windowMs` (default 24 hours), reaches `amount`. Without a threshold every write needs approval.
+   * tool inside `windowMs` (default 24 hours), reaches `amount`. Amounts are integers in minor units (pence), so
+   * sums are exact. Without a threshold every write needs approval.
    */
   approvalThreshold?: { field: string; amount: number; windowMs?: number };
 }
@@ -56,7 +57,9 @@ export function argsHash(tool: string, args: Record<string, unknown>): string {
  * never from model output or tool arguments.
  */
 export function principalOf(actor: string): string {
-  return actor.startsWith("agent:") ? actor.slice("agent:".length) : actor;
+  let principal = actor;
+  while (principal.startsWith("agent:")) principal = principal.slice("agent:".length);
+  return principal;
 }
 
 export function needsApproval(policy: ToolPolicy | undefined, args: Record<string, unknown>, alreadySpent = 0): boolean {
@@ -65,7 +68,9 @@ export function needsApproval(policy: ToolPolicy | undefined, args: Record<strin
   if (policy.impact === "irreversible") return true;
   if (!policy.approvalThreshold) return true;
   const value = args[policy.approvalThreshold.field];
-  if (typeof value !== "number" || !Number.isFinite(value)) return true;
+  // Fail closed on anything that is not a positive whole number of minor units: a negative "refund" must not
+  // earn credit against the running total, and NaN, Infinity or fractions of a penny are not amounts.
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) return true;
   return value + alreadySpent >= policy.approvalThreshold.amount;
 }
 
@@ -90,7 +95,7 @@ export class ApprovalGate {
     this.log.push({ at: this.options.now(), event, tool, actor, ...(requestId ? { requestId } : {}) });
   }
 
-  /** What `principal` spent through auto-executed calls of this tool inside the policy's window. */
+  /** What `principal` spent or reserved through auto-executed calls of this tool inside the policy's window. */
   private alreadySpent(policy: ToolPolicy | undefined, principal: string): number {
     const threshold = policy?.approvalThreshold;
     if (!threshold) return 0;
@@ -100,10 +105,20 @@ export class ApprovalGate {
       .reduce((total, s) => total + s.amount, 0);
   }
 
-  private recordSpending(policy: ToolPolicy | undefined, principal: string, args: Record<string, unknown>): void {
+  /**
+   * Counts the call's amount against the running total immediately, before any `await`, so concurrent calls see
+   * each other. Returns a function that releases the reservation if the call fails.
+   */
+  private reserve(policy: ToolPolicy | undefined, principal: string, args: Record<string, unknown>): () => void {
     const field = policy?.approvalThreshold?.field;
     const amount = field === undefined ? undefined : args[field];
-    if (policy && typeof amount === "number") this.spending.push({ at: this.options.now(), tool: policy.name, principal, amount });
+    if (!policy || typeof amount !== "number" || amount <= 0) return () => {};
+    const entry = { at: this.options.now(), tool: policy.name, principal, amount };
+    this.spending.push(entry);
+    return () => {
+      const index = this.spending.indexOf(entry);
+      if (index >= 0) this.spending.splice(index, 1);
+    };
   }
 
   private find(requestId: string): ApprovalRequest {
@@ -123,14 +138,15 @@ export class ApprovalGate {
     const policy = this.options.policies.find((p) => p.name === tool);
     const principal = principalOf(requestedBy);
     if (!needsApproval(policy, args, this.alreadySpent(policy, principal))) {
+      const release = this.reserve(policy, principal, args); // synchronously after the check: no await in between
       let result: unknown;
       try {
         result = await this.options.execute(tool, args);
       } catch (error) {
+        release();
         this.record("execution-failed", tool, requestedBy);
         throw error;
       }
-      this.recordSpending(policy, principal, args);
       this.record("auto-executed", tool, requestedBy);
       return { status: "executed", result };
     }

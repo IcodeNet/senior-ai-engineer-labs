@@ -116,6 +116,12 @@ test("an empty-string cursor is a cursor, not the end of the list", async () => 
   assert.deepEqual(server.received.filter((r) => r.method === "tools/list").map((r) => r.params), [{}, { cursor: "" }]);
 });
 
+test("a null nextCursor, which the spec does not allow, ends the list instead of being sent back", async () => {
+  const { transport, server } = fake((m) => (m === "initialize" ? init() : { tools: [tool("a")], nextCursor: null }));
+  assert.deepEqual((await listAllTools(await connect(transport))).map((t) => t.name), ["a"]);
+  assert.equal(server.received.filter((r) => r.method === "tools/list").length, 1);
+});
+
 test("interoperates with a real SDK server", async () => {
   const server = new McpServer({ name: "fx-server", version: "2.0.0" });
   server.registerTool(

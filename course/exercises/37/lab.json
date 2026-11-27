@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Release safety: canary, shadow and rollback",
+  "description": "Route a sticky canary slice, compare shadow outputs, and decide promote, hold or rollback from metrics.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": ["--run"]
+}

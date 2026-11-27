@@ -28,6 +28,10 @@ test("each user has their own bucket and expensive requests cost more", () => {
   assert.equal(limiter.take("u-ben", 10).allowed, true);
   assert.throws(() => limiter.take("u-ana", 11), RangeError);
   assert.throws(() => limiter.take("u-ana", 0), RangeError);
+  assert.throws(() => limiter.take("u-ana", 0.5), RangeError);
+  assert.throws(() => limiter.take("u-ana", -5), RangeError, "a negative cost would add tokens");
+  assert.throws(() => limiter.take("u-ana", Number.NaN), RangeError);
+  assert.equal(limiter.take("u-ana", 2).remaining, 0, "rejected calls must not change the bucket");
 });
 
 test("reservations cap max output tokens to what is left of the daily budget", () => {

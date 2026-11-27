@@ -48,14 +48,14 @@ The engine is pinned by commit in `icode/engine.json`. To use a local engine che
 | 19 | Keyword, vector, hybrid and semantic search on Azure | Four query modes behind a backend approval filter |
 | 20 | Grounded answers with Azure OpenAI | Chat completions, content-filter handling, step 08 pipeline on real services |
 | 21 | Evaluate on Azure, then shut down | Mode comparison on the labelled set, then teardown and verification |
-| 30 | Tenant isolation and document ACLs | Deny-by-default tenant, ACL and clearance checks; escaped OData security filter; post-filter audit |
-| 31 | PII detection and redaction | Luhn and IBAN mod-97 validation, overlap resolution, reversible typed placeholders |
+| 30 | Tenant isolation and document ACLs | Deny-by-default tenant, ACL and clearance checks (unknown levels deny); escaped OData security filter; post-filter audit |
+| 31 | PII detection and redaction | Luhn and IBAN mod-97 validation, card windows, overlap resolution, reversible typed placeholders |
 | 32 | Prompt-injection defences and a red-team harness | Injection scanner, quarantine, canary and link-allowlist output checks, attack success rate |
 | 33 | Resilience: timeouts, retries, circuit breaker, fallback | Abortable timeouts, transient-error classification, full-jitter backoff, circuit breaker, degraded fallback |
 | 34 | Rate limits and token budgets per user | Token bucket with `Retry-After`, daily token budgets with reserve and settle |
-| 35 | Semantic caching with invalidation and safety | Security-scoped cache keys, similarity threshold, TTL, version staleness, document invalidation |
-| 36 | Observability: traces, token attributes and safe logs | Spans with GenAI token attributes, trace summary, allow-listed and pseudonymised structured logs |
-| 37 | Release safety: canary, shadow and rollback | Sticky hashed canary, shadow agreement, guardrail-based promote/hold/rollback, rollout stages |
+| 35 | Semantic caching with invalidation and safety | Scope keys with clearance, per-user re-authorization on hits, hashed questions, PII refusal, TTL, staleness, invalidation |
+| 36 | Observability: traces, token attributes and safe logs | Spans with GenAI token attributes, trace summary, allow-listed structured logs with HMAC pseudonyms and masking |
+| 37 | Release safety: canary, shadow and rollback | Sticky per-release canary, shadow agreement, guardrail-based promote/hold/rollback, rollout stages |
 
 Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. Steps 30–37 are **Lab 05, production AI (local)**: authorization, PII, prompt injection, resilience, rate limits, caching, observability and release safety around the same RAG service, with deterministic fakes for models, clocks and randomness, so it costs nothing (steps 22–29 are reserved for Lab 04). All teaching happens in this course.
 
@@ -92,9 +92,9 @@ Each Lab 03 step has **offline tests** (exact REST requests against a fake trans
 
 **Prerequisites:** Labs 01–02 (steps 06, 08, 14–16 are referenced). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
 
-**Run and check:** open steps 30–37 with `npm start`, or run `npm test`; each solution prints its Vitest summary (51 tests across the 8 steps) and each starter fails on `Not implemented`.
+**Run and check:** open steps 30–37 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
 
-**Limitations:** the components are in-memory, single-process teaching implementations. Regex PII detection misses names and addresses; the injection scanner is a bypassable heuristic (the red-team suite shows a case it misses); rate limits and caches would need a shared store across instances; the tracer is a stand-in for OpenTelemetry. No results from real models or traffic are claimed.
+**Limitations:** the components are in-memory, single-process teaching implementations. Regex PII detection misses names and addresses, and placeholders can collide with user text that already looks like one; the injection scanner is a bypassable heuristic (the red-team suite shows a case it misses); rate limits and caches would need a shared store across instances; the tracer is a stand-in for OpenTelemetry. No results from real models or traffic are claimed.
 
 ## Verification
 

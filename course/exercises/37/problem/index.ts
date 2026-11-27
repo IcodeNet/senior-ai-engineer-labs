@@ -20,13 +20,17 @@ export interface ReleaseMetrics {
   requests: number;
   errors: number;
   p95Ms: number;
+  /** Mean judge score over the judged sample, not over every request. */
   groundedness: number;
+  judgedSamples: number;
   costPerQuery: number;
   safetyViolations: number;
 }
 
 export interface RolloutPolicy {
   minRequests: number;
+  /** Groundedness comes from judging a sample, so it needs its own minimum. */
+  minJudgedSamples: number;
   /** Absolute increase in error rate allowed, e.g. 0.01 = one percentage point. */
   maxErrorRateIncrease: number;
   /** Relative increases allowed, e.g. 0.2 = 20%. */
@@ -51,8 +55,9 @@ export function bucketOf(key: string): number {
   throw new Error("Not implemented: bucketOf");
 }
 
-export function assignVariant(userId: string, canaryPercent: number, salt = "release"): Variant {
-  // TODO: canary when bucketOf('<salt>:<userId>') is below canaryPercent; RangeError outside 0-100.
+/** Salted by release ID, so each release's canary is a different slice of users (not the same 1% every time). */
+export function assignVariant(userId: string, canaryPercent: number, releaseId: string): Variant {
+  // TODO: canary when bucketOf('<releaseId>:<userId>') is below canaryPercent; RangeError outside 0-100; throw on an empty releaseId.
   throw new Error("Not implemented: assignVariant");
 }
 
@@ -62,7 +67,7 @@ export function shadowAgreement(pairs: ShadowPair[]): ShadowReport {
 }
 
 export function rolloutDecision(baseline: ReleaseMetrics, canary: ReleaseMetrics, policy: RolloutPolicy): RolloutDecision {
-  // TODO: safety first, then traffic, then every breached guardrail; otherwise promote.
+  // TODO: safety first, then traffic and judged samples, then every breached guardrail; otherwise promote.
   throw new Error("Not implemented: rolloutDecision");
 }
 

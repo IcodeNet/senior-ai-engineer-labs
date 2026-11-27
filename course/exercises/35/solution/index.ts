@@ -1,8 +1,12 @@
+import { createHash } from "node:crypto";
+
 export type Embed = (text: string) => number[];
 
 export interface CacheScope {
   tenantId: string;
   groups: string[];
+  /** Step 30's clearance level: a lower-cleared colleague never shares a key with a higher-cleared one. */
+  clearance: string;
   model: string;
   promptVersion: string;
 }
@@ -14,7 +18,7 @@ export interface CachedAnswer {
 
 export type CacheLookup =
   | { hit: true; answer: CachedAnswer; similarity: number }
-  | { hit: false; reason: "miss" | "expired" | "stale" };
+  | { hit: false; reason: "miss" | "expired" | "stale" | "forbidden" };
 
 export type StoreResult = { stored: true } | { stored: false; reason: "personalised" | "ungrounded" | "contains-pii" };
 
@@ -27,21 +31,34 @@ export interface CacheOptions {
   currentVersion: (docId: string) => number | undefined;
 }
 
-interface Entry {
-  question: string;
+/** What the cache keeps: a hash of the normalised question, never its text. */
+export interface Entry {
+  questionHash: string;
   vector: number[];
   answer: CachedAnswer;
   storedAt: number;
 }
 
-const PLACEHOLDER = /\[(?:EMAIL|CARD|IBAN|NINO)_\d+\]/;
+/** A coarse, deliberately over-eager PII check (step 31 does this properly): placeholders, emails, long digit runs, IBAN-like strings. */
+export function containsPii(text: string): boolean {
+  return [
+    /\[(?:EMAIL|CARD|IBAN|NINO)_\d+\]/,
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/,
+    /\d(?:[ -]?\d){12,}/,
+    /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,}/,
+  ].some((pattern) => pattern.test(text));
+}
+
+export function hashQuestion(normalized: string): string {
+  return createHash("sha256").update(normalized).digest("hex");
+}
 
 export function normalizeQuestion(question: string): string {
   return question.toLowerCase().replace(/\s+/g, " ").trim().replace(/[?!.]+$/, "").trim();
 }
 
 export function scopeKey(scope: CacheScope): string {
-  return [scope.tenantId, [...scope.groups].sort().join(","), scope.model, scope.promptVersion].join("|");
+  return [scope.tenantId, [...scope.groups].sort().join(","), scope.clearance, scope.model, scope.promptVersion].join("|");
 }
 
 export function cosine(a: number[], b: number[]): number {
@@ -62,27 +79,34 @@ export class SemanticCache {
 
   constructor(private readonly options: CacheOptions) {}
 
+  /** The stored entries for a scope, for audits and tests. */
+  entriesFor(scope: CacheScope): readonly Entry[] {
+    return this.entries.get(scopeKey(scope)) ?? [];
+  }
+
   set(scope: CacheScope, question: string, answer: CachedAnswer, flags: { personalised?: boolean } = {}): StoreResult {
     if (flags.personalised) return { stored: false, reason: "personalised" };
     if (answer.sources.length === 0) return { stored: false, reason: "ungrounded" };
-    if (PLACEHOLDER.test(answer.text)) return { stored: false, reason: "contains-pii" };
+    if (containsPii(question) || containsPii(answer.text)) return { stored: false, reason: "contains-pii" };
     const key = scopeKey(scope);
     const normalized = normalizeQuestion(question);
-    const list = (this.entries.get(key) ?? []).filter((entry) => entry.question !== normalized);
-    list.push({ question: normalized, vector: this.options.embed(normalized), answer, storedAt: this.options.now() });
+    const questionHash = hashQuestion(normalized);
+    const list = (this.entries.get(key) ?? []).filter((entry) => entry.questionHash !== questionHash);
+    list.push({ questionHash, vector: this.options.embed(normalized), answer, storedAt: this.options.now() });
     this.entries.set(key, list);
     return { stored: true };
   }
 
-  get(scope: CacheScope, question: string): CacheLookup {
+  get(scope: CacheScope, question: string, canRead: (docId: string) => boolean): CacheLookup {
     const key = scopeKey(scope);
     const list = this.entries.get(key) ?? [];
     const normalized = normalizeQuestion(question);
+    const questionHash = hashQuestion(normalized);
     const vector = this.options.embed(normalized);
     let best: Entry | undefined;
     let bestSimilarity = -Infinity;
     for (const entry of list) {
-      const similarity = entry.question === normalized ? 1 : cosine(vector, entry.vector);
+      const similarity = entry.questionHash === questionHash ? 1 : cosine(vector, entry.vector);
       if (similarity > bestSimilarity) {
         best = entry;
         bestSimilarity = similarity;
@@ -98,6 +122,7 @@ export class SemanticCache {
       remove(best);
       return { hit: false, reason: "stale" };
     }
+    if (!best.answer.sources.every((source) => canRead(source.id))) return { hit: false, reason: "forbidden" };
     return { hit: true, answer: best.answer, similarity: bestSimilarity };
   }
 

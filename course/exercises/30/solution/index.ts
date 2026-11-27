@@ -19,6 +19,11 @@ export type Decision = { allow: true } | { allow: false; reason: "tenant" | "no-
 
 export const CLEARANCE_RANK: Record<Classification, number> = { public: 0, internal: 1, confidential: 2, restricted: 3 };
 
+/** The rank of a known level, or undefined for anything else (wrong case, unknown name): unknown never grants. */
+function rank(level: string): number | undefined {
+  return Object.hasOwn(CLEARANCE_RANK, level) ? CLEARANCE_RANK[level as Classification] : undefined;
+}
+
 export function canRead(principal: Principal, doc: SecuredDocument): Decision {
   if (!principal.tenantId || principal.tenantId !== doc.tenantId) return { allow: false, reason: "tenant" };
   const users = doc.acl?.users ?? [];
@@ -26,7 +31,9 @@ export function canRead(principal: Principal, doc: SecuredDocument): Decision {
   if (users.length === 0 && groups.length === 0) return { allow: false, reason: "no-acl" };
   const listed = users.includes(principal.userId) || groups.some((group) => principal.groups.includes(group));
   if (!listed) return { allow: false, reason: "not-listed" };
-  if (CLEARANCE_RANK[doc.classification] > CLEARANCE_RANK[principal.clearance]) return { allow: false, reason: "clearance" };
+  const required = rank(doc.classification);
+  const held = rank(principal.clearance);
+  if (required === undefined || held === undefined || required > held) return { allow: false, reason: "clearance" };
   return { allow: true };
 }
 
@@ -36,6 +43,7 @@ function quote(value: string): string {
 
 export function buildSecurityFilter(principal: Principal): string {
   if (!principal.tenantId) throw new Error("principal has no tenant");
+  if (rank(principal.clearance) === undefined) throw new Error(`unknown clearance ${principal.clearance}`);
   const grants = [`aclUsers/any(u: u eq ${quote(principal.userId)})`];
   for (const group of [...principal.groups].sort()) grants.push(`aclGroups/any(g: g eq ${quote(group)})`);
   const allowed = (Object.keys(CLEARANCE_RANK) as Classification[]).filter(

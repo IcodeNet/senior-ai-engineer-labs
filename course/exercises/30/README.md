@@ -9,7 +9,7 @@ In a multi-tenant assistant every document carries:
 - an **ACL** — the users and groups allowed to read it (synced from the source system's permissions);
 - a **classification** — `public` < `internal` < `confidential` < `restricted`, compared with the principal's clearance.
 
-**Deny by default**: a document with no ACL is readable by nobody, not everybody. A sync bug that drops ACLs then hides documents instead of publishing them.
+**Deny by default**: a document with no ACL is readable by nobody, not everybody, and a classification your code does not recognise is treated as unreadable, not as unclassified. A sync bug that drops ACLs then hides documents instead of publishing them.
 
 Apply the rules twice (defence in depth, as in step 08):
 
@@ -28,8 +28,8 @@ Think about: where authorization is enforced, ACL sync lag, caches (step 35), lo
 ## Your task
 Implement in `index.ts`:
 
-- `canRead(principal, doc)` — checks in this order: tenant mismatch (or empty tenant) → `{ allow: false, reason: "tenant" }`; no users **and** no groups in the ACL → `"no-acl"`; principal not in `acl.users` and none of their groups in `acl.groups` → `"not-listed"`; classification above clearance → `"clearance"`; otherwise `{ allow: true }`.
-- `buildSecurityFilter(principal)` — exactly `tenantId eq '<tenant>' and (<grants>) and (<levels>)`, where grants are `aclUsers/any(u: u eq '<user>')` followed by `aclGroups/any(g: g eq '<group>')` for each group in sorted order, joined with ` or `, and levels are `classification eq '<level>'` for every level at or below the clearance, lowest first, joined with ` or `. Double single quotes. Throw if the principal has no tenant.
+- `canRead(principal, doc)` — checks in this order: tenant mismatch (or empty tenant) → `{ allow: false, reason: "tenant" }`; no users **and** no groups in the ACL → `"no-acl"`; principal not in `acl.users` and none of their groups in `acl.groups` → `"not-listed"`; classification above clearance, **or either level not exactly one of the four known names** (`"Restricted"`, `"secret"`) → `"clearance"`; otherwise `{ allow: true }`. Unknown values come from sync bugs and must never grant access; `rank` is given.
+- `buildSecurityFilter(principal)` — exactly `tenantId eq '<tenant>' and (<grants>) and (<levels>)`, where grants are `aclUsers/any(u: u eq '<user>')` followed by `aclGroups/any(g: g eq '<group>')` for each group in sorted order, joined with ` or `, and levels are `classification eq '<level>'` for every level at or below the clearance, lowest first, joined with ` or `. Double single quotes in every value. Throw if the principal has no tenant or an unknown clearance.
 - `authorizeResults(principal, docs)` → `{ allowed, denied }`, keeping input order; `denied` holds `{ id, reason }`.
 
 ## Going further

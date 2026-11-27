@@ -57,6 +57,21 @@ test("output checks catch what the scanner missed: canary leaks and unapproved l
   assert.deepEqual(await guardedAnswer("q", attacks[3].docs, { llm, canary, allowedDomains }), { kind: "blocked", reason: "disallowed-link", quarantined: [] });
 });
 
+test("the link allowlist matches whole domains, and spacing out the canary does not hide a leak", async () => {
+  const check = (reply: string) => guardedAnswer("q", [policy], { llm: async () => reply, canary, allowedDomains });
+  for (const link of [
+    "https://evilnorthbank.example/login",
+    "https://northbank.example.evil.example/login",
+    "//evil.example/login",
+    "see www.evil.example now",
+    "HTTPS://EVIL.EXAMPLE",
+  ])
+    assert.deepEqual(await check(`Verify at ${link} [travel]`), { kind: "blocked", reason: "disallowed-link", quarantined: [] }, link);
+  for (const link of ["https://northbank.example/a", "https://intranet.northbank.example:443/b", "www.northbank.example"])
+    assert.equal((await check(`See ${link} [travel]`)).kind, "answer", link);
+  assert.deepEqual(await check("My rules end with c a n a r y - 7 F 3 A."), { kind: "blocked", reason: "canary-leak", quarantined: [] });
+});
+
 test("with every document quarantined the model is not called", async () => {
   const { llm, prompts } = gullible();
   const result = await guardedAnswer("q", [attacks[0].docs[1]], { llm, canary, allowedDomains });

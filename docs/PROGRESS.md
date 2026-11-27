@@ -20,7 +20,7 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
 
 ## In progress
-- [ ] Course Lab 05 — production AI, steps 30–37: implemented and verified locally; awaiting CI and review on its pull request (entry dated 2026-11-27, Lab 05).
+- [ ] Course Lab 05 — production AI, steps 30–37: implemented, CI verified on PR #11, independent review changes addressed; not merged (entry dated 2026-11-27, Lab 05).
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
 
 ## Next actions
@@ -78,6 +78,11 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 - CI verified on PR #11 (https://github.com/IcodeNet/senior-ai-engineer-labs/pull/11) at `0d81819`: CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073208830 — `verify` passed; `course` passed engine acceptance ("29 steps, 58 variants, learner journey") and browser acceptance ("All 29 lessons open with their title and interview question"). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073208835: 68 changed paths, 0 findings.
 - Status stays **in progress** until the PR is reviewed and merged; browser acceptance was not run in the agent sandbox (no Chromium), only in CI.
 - Steps 22–29 are reserved for Lab 04 and are not part of this change. No Azure resources provisioned.
+
+### Lab 05 review fixes (2026-11-27)
+- Independent review on PR #11 (separate session, comment https://github.com/IcodeNet/senior-ai-engineer-labs/pull/11#issuecomment-7229062462) requested changes. Fixed: unknown classifications deny (30); semantic-cache hits re-authorize every cited source per user and the key includes clearance, questions stored as hashes, raw PII refused (35); card windows, real overlap and Luhn "subtract 9" tests, HMRC `QQ` NI prefix (31); whole-domain link allowlist, scheme-relative/`www.` links, spaced canary (32); breaker ignores caller 4xx errors, timer-clearing test (33); cost validation and overspend wording (34); HMAC-SHA-256 pseudonyms and card/IBAN masking (36); per-release canary salt and judged-sample gate (37).
+- Local evidence (agent session, not CI): typecheck clean; `npm test` "Acceptance passed: 29 steps, 58 variants"; Lab 05 now has 60 tests (7, 7, 7, 10, 6, 10, 5, 8). All 8 mutations listed in the review, plus 9 more for the new rules, now fail at least one test (each applied to the solution, run, reverted).
+- CI on the fix commit: pending; recorded below once observed.
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.

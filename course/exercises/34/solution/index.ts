@@ -20,7 +20,7 @@ export class TokenBucket {
 
   take(key: string, cost = 1): TakeResult {
     const { capacity, refillPerSecond, now } = this.options;
-    if (cost <= 0 || cost > capacity) throw new RangeError(`cost must be between 1 and ${capacity}`);
+    if (!Number.isFinite(cost) || cost < 1 || cost > capacity) throw new RangeError(`cost must be between 1 and ${capacity}`);
     const time = now();
     const bucket = this.buckets.get(key) ?? { tokens: capacity, updatedAt: time };
     bucket.tokens = Math.min(capacity, bucket.tokens + ((time - bucket.updatedAt) / 1000) * refillPerSecond);

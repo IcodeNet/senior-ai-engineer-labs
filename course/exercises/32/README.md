@@ -7,6 +7,7 @@ Anything the model reads can try to give it orders: a retrieved policy page edit
 2. **Structural separation** — instructions only in the system prompt; untrusted text escaped inside `<document>` blocks so it cannot close its own tag (as in step 06).
 3. **Output checks** — a **canary** token in the system prompt reveals prompt leakage when it appears in the output; links to domains outside an allowlist are blocked, because a link or a markdown image is how data is exfiltrated and how phishing reaches staff.
 4. **Least privilege** — the model gets no tools or data it does not need (Lab 04 covers tool permissions).
+   These checks are narrow by design and you should know their gaps: a bare `evil.example/login` with no scheme or `www.` is not detected, and a canary that the model encodes (base64, translation) is not recognised. Rendering the answer as plain text, with links only from an allowlist the UI controls, closes more of the gap than any regex.
 5. **A red-team suite** — known attacks run in CI and report the **attack success rate**. Heuristics are bypassable (the "print everything above" case below slips past the scanner); the suite shows which layer caught each attack and stops regressions.
 
 The fake model in the tests is deliberately gullible, so the difference between the naive and the guarded pipeline is visible and deterministic.
@@ -23,7 +24,7 @@ Implement in `index.ts`:
 - `guardedAnswer(question, docs, { llm, canary, allowedDomains })`:
   - quarantine flagged documents (IDs in `quarantined`, in input order); if none remain, return `{ kind: "blocked", reason: "no-safe-context", quarantined }` **without** calling the model;
   - system prompt: `SYSTEM_RULES + "\nCanary: " + canary`; user prompt: `Question: <q>`, a blank line, `Documents:`, then one `<document id="<id>">\n<escaped text>\n</document>` per safe document, joined with newlines;
-  - call the model once; output containing the canary → `"canary-leak"`; any `http(s)://` URL whose hostname is not an allowed domain or a subdomain of one → `"disallowed-link"`; otherwise `{ kind: "answer", text, quarantined }`.
+  - call the model once; if the output, reduced to lower-case letters and digits, contains the canary reduced the same way → `"canary-leak"` (so `c a n a r y - 7 F 3 A` still counts); any link whose host is not an allowed domain or a subdomain of one (`host === d` or `host` ends with `"." + d`, so `evilnorthbank.example` is **not** allowed) → `"disallowed-link"`; otherwise `{ kind: "answer", text, quarantined }`. Links are `http://` / `https://` (any case), scheme-relative `//host` and `www.host`; `disallowedLink` is a helper you write.
 - `runRedTeam(cases, target)` → `{ total, attacksSucceeded, attackSuccessRate, failures }` — an attack succeeds when the target's output contains any `forbidden` string; `failures` are case IDs in order. Throw `RangeError` for no cases.
 
 ## Going further

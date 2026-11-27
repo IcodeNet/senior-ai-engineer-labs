@@ -1,8 +1,12 @@
+import { createHash } from "node:crypto";
+
 export type Embed = (text: string) => number[];
 
 export interface CacheScope {
   tenantId: string;
   groups: string[];
+  /** Step 30's clearance level: a lower-cleared colleague never shares a key with a higher-cleared one. */
+  clearance: string;
   model: string;
   promptVersion: string;
 }
@@ -14,7 +18,7 @@ export interface CachedAnswer {
 
 export type CacheLookup =
   | { hit: true; answer: CachedAnswer; similarity: number }
-  | { hit: false; reason: "miss" | "expired" | "stale" };
+  | { hit: false; reason: "miss" | "expired" | "stale" | "forbidden" };
 
 export type StoreResult = { stored: true } | { stored: false; reason: "personalised" | "ungrounded" | "contains-pii" };
 
@@ -27,14 +31,27 @@ export interface CacheOptions {
   currentVersion: (docId: string) => number | undefined;
 }
 
-interface Entry {
-  question: string;
+/** What the cache keeps: a hash of the normalised question, never its text. */
+export interface Entry {
+  questionHash: string;
   vector: number[];
   answer: CachedAnswer;
   storedAt: number;
 }
 
-const PLACEHOLDER = /\[(?:EMAIL|CARD|IBAN|NINO)_\d+\]/;
+/** A coarse, deliberately over-eager PII check (step 31 does this properly): placeholders, emails, long digit runs, IBAN-like strings. */
+export function containsPii(text: string): boolean {
+  return [
+    /\[(?:EMAIL|CARD|IBAN|NINO)_\d+\]/,
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/,
+    /\d(?:[ -]?\d){12,}/,
+    /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,}/,
+  ].some((pattern) => pattern.test(text));
+}
+
+export function hashQuestion(normalized: string): string {
+  return createHash("sha256").update(normalized).digest("hex");
+}
 
 export function normalizeQuestion(question: string): string {
   // TODO: lower-case, collapse whitespace, trim, and strip trailing ? ! or . characters.
@@ -42,7 +59,7 @@ export function normalizeQuestion(question: string): string {
 }
 
 export function scopeKey(scope: CacheScope): string {
-  // TODO: tenantId|sorted groups joined by commas|model|promptVersion.
+  // TODO: tenantId|sorted groups joined by commas|clearance|model|promptVersion.
   throw new Error("Not implemented: scopeKey");
 }
 
@@ -56,13 +73,18 @@ export class SemanticCache {
 
   constructor(private readonly options: CacheOptions) {}
 
+  /** The stored entries for a scope, for audits and tests. */
+  entriesFor(scope: CacheScope): readonly Entry[] {
+    return this.entries.get(scopeKey(scope)) ?? [];
+  }
+
   set(scope: CacheScope, question: string, answer: CachedAnswer, flags: { personalised?: boolean } = {}): StoreResult {
-    // TODO: refuse personalised, source-less and placeholder-bearing answers; otherwise store (replacing the same normalised question).
+    // TODO: refuse personalised, source-less and PII-bearing questions or answers; store the question hash, never its text.
     throw new Error("Not implemented: SemanticCache.set");
   }
 
-  get(scope: CacheScope, question: string): CacheLookup {
-    // TODO: best match in this scope only (exact = 1, else cosine); below threshold is a miss; expire, then check source versions.
+  get(scope: CacheScope, question: string, canRead: (docId: string) => boolean): CacheLookup {
+    // TODO: best match in this scope (same hash = 1, else cosine); miss, expired, stale, then re-check canRead for every source.
     throw new Error("Not implemented: SemanticCache.get");
   }
 

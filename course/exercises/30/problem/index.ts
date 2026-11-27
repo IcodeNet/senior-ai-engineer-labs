@@ -19,8 +19,13 @@ export type Decision = { allow: true } | { allow: false; reason: "tenant" | "no-
 
 export const CLEARANCE_RANK: Record<Classification, number> = { public: 0, internal: 1, confidential: 2, restricted: 3 };
 
+/** The rank of a known level, or undefined for anything else (wrong case, unknown name): unknown never grants. */
+function rank(level: string): number | undefined {
+  return Object.hasOwn(CLEARANCE_RANK, level) ? CLEARANCE_RANK[level as Classification] : undefined;
+}
+
 export function canRead(principal: Principal, doc: SecuredDocument): Decision {
-  // TODO: deny on tenant mismatch, empty ACL, unlisted principal or insufficient clearance; otherwise allow.
+  // TODO: deny on tenant mismatch, empty ACL, unlisted principal, unknown level or insufficient clearance; otherwise allow.
   throw new Error("Not implemented: canRead");
 }
 

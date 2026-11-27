@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 export type AttributeValue = string | number | boolean;
 
@@ -111,24 +111,38 @@ export function summariseTrace(spans: SpanRecord[], traceId: string): TraceSumma
   };
 }
 
-export function pseudonymise(value: string, salt: string): string {
-  return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 16);
+/**
+ * HMAC-SHA-256 keyed with a secret held in a key vault, truncated to 16 hex characters. A plain or salted hash of a
+ * guessable ID (u-0001…u-9999) can be reversed by anyone who knows the salt by hashing every candidate; without the
+ * key that enumeration is impossible. The output is still personal data under GDPR (pseudonymised, not anonymised).
+ */
+export function pseudonymise(value: string, key: string): string {
+  if (!key) throw new Error("a secret key is required");
+  return createHmac("sha256", key).update(value).digest("hex").slice(0, 16);
+}
+
+/** Masks emails, IBAN-like strings and long digit runs (cards, accounts) in free text. */
+export function maskFreeText(text: string): string {
+  return text
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[EMAIL]")
+    .replace(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b/g, "[IBAN]")
+    .replace(/\d(?:[ -]?\d){12,}/g, "[NUMBER]");
 }
 
 export function safeLogRecord(
   event: string,
   fields: Record<string, unknown>,
-  policy: { allow: string[]; pseudonymise: string[]; salt: string; maxLength?: number },
+  policy: { allow: string[]; pseudonymise: string[]; key: string; maxLength?: number },
 ): Record<string, AttributeValue> {
   const maxLength = policy.maxLength ?? 200;
   const record: Record<string, AttributeValue> = { event };
   const dropped: string[] = [];
   for (const [key, value] of Object.entries(fields)) {
-    if (policy.pseudonymise.includes(key) && typeof value === "string") record[key] = pseudonymise(value, policy.salt);
+    if (policy.pseudonymise.includes(key) && typeof value === "string") record[key] = pseudonymise(value, policy.key);
     else if (!policy.allow.includes(key)) dropped.push(key);
     else if (typeof value === "number" || typeof value === "boolean") record[key] = value;
     else if (typeof value === "string")
-      record[key] = value.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[EMAIL]").slice(0, maxLength);
+      record[key] = maskFreeText(value).slice(0, maxLength);
     else dropped.push(key);
   }
   if (dropped.length) record.droppedFields = dropped.sort().join(",");

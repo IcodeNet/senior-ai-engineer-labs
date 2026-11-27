@@ -17,9 +17,33 @@ export interface Redaction {
 const PATTERNS: { type: PiiType; pattern: RegExp; valid?: (value: string) => boolean }[] = [
   { type: "email", pattern: /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g },
   { type: "iban", pattern: /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b/g, valid: (v) => ibanValid(v) },
-  { type: "card", pattern: /\b\d(?:[ -]?\d){12,18}\b/g, valid: (v) => luhnValid(v) },
   { type: "nino", pattern: /\b[A-Z]{2} ?\d{2} ?\d{2} ?\d{2} ?[A-D]\b/g },
 ];
+
+/**
+ * Every digit window of 13–19 digits that starts and ends on a digit-group boundary inside a run of
+ * digits separated by single spaces or dashes. "Ref 12 4111 1111 1111 1111" yields windows starting
+ * at "12" and at "4111", so a card next to other digits is still found.
+ */
+export function cardCandidates(text: string): { start: number; end: number; value: string }[] {
+  const candidates: { start: number; end: number; value: string }[] = [];
+  for (const run of text.matchAll(/\b\d(?:[ -]?\d)*\b/g)) {
+    const digits: number[] = [];
+    for (let i = 0; i < run[0].length; i++) if (/\d/.test(run[0][i])) digits.push(i);
+    const startsGroup = (k: number) => k === 0 || digits[k - 1] !== digits[k] - 1;
+    const endsGroup = (k: number) => k === digits.length - 1 || digits[k + 1] !== digits[k] + 1;
+    for (let first = 0; first < digits.length; first++) {
+      if (!startsGroup(first)) continue;
+      for (let last = first + 12; last < Math.min(digits.length, first + 19); last++) {
+        if (!endsGroup(last)) continue;
+        const start = run.index + digits[first];
+        const end = run.index + digits[last] + 1;
+        candidates.push({ start, end, value: text.slice(start, end) });
+      }
+    }
+  }
+  return candidates;
+}
 
 export function luhnValid(value: string): boolean {
   // TODO: strip spaces and dashes, require 13-19 digits, then apply the Luhn checksum.
@@ -32,7 +56,7 @@ export function ibanValid(value: string): boolean {
 }
 
 export function detectPii(text: string): PiiSpan[] {
-  // TODO: run PATTERNS, drop matches that fail validation, sort by start (longest first) and drop overlaps.
+  // TODO: PATTERNS matches that pass validation plus Luhn-valid cardCandidates; sort by start (longest first) and drop overlaps.
   throw new Error("Not implemented: detectPii");
 }
 

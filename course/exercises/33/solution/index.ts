@@ -75,7 +75,15 @@ export class CircuitBreaker {
   private failures = 0;
   private openedAt: number | undefined;
 
-  constructor(private readonly options: { failureThreshold: number; cooldownMs: number; now: () => number }) {}
+  constructor(
+    private readonly options: {
+      failureThreshold: number;
+      cooldownMs: number;
+      now: () => number;
+      /** Which errors say the dependency is unhealthy. Default isRetryable: caller errors (4xx) do not count. */
+      isFailure?: (error: unknown) => boolean;
+    },
+  ) {}
 
   state(): CircuitState {
     if (this.openedAt === undefined) return "closed";
@@ -91,6 +99,12 @@ export class CircuitBreaker {
       this.openedAt = undefined;
       return value;
     } catch (error) {
+      if (!(this.options.isFailure ?? isRetryable)(error)) {
+        // The dependency answered; the request was bad. That is evidence of health, not of failure.
+        this.failures = 0;
+        this.openedAt = undefined;
+        throw error;
+      }
       this.failures += 1;
       if (state === "half-open" || this.failures >= this.options.failureThreshold) this.openedAt = this.options.now();
       throw error;

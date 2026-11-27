@@ -55,17 +55,18 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  for (const match of output.matchAll(/https?:\/\/[^\s)\]"'>]+/gi)) {
-    let host: string;
-    try {
-      host = new URL(match[0]).hostname.toLowerCase();
-    } catch {
-      return true;
-    }
+  // Absolute (https://host), scheme-relative (//host) and www.host links. Bare "host/path" text is not detected.
+  for (const match of output.matchAll(/(?:\bhttps?:)?\/\/([^\s/?#:)\]"'>]+)|\b(www\.[^\s/?#:)\]"'>]+)/gi)) {
+    const host = (match[1] ?? match[2]).toLowerCase().replace(/\.$/, "");
     const allowed = allowedDomains.some((domain) => host === domain || host.endsWith(`.${domain}`));
     if (!allowed) return true;
   }
   return false;
+}
+
+/** Letters and digits only, lower-cased: "C-A-N A R Y" and "canary" compare equal. */
+function squash(text: string): string {
+  return text.replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
 export async function guardedAnswer(question: string, docs: Doc[], options: GuardOptions): Promise<GuardResult> {
@@ -80,7 +81,7 @@ export async function guardedAnswer(question: string, docs: Doc[], options: Guar
   const blocks = safe.map((doc) => `<document id="${escape(doc.id)}">\n${escape(doc.text)}\n</document>`);
   const user = [`Question: ${question}`, "", "Documents:", ...blocks].join("\n");
   const text = await options.llm({ system, user });
-  if (text.includes(options.canary)) return { kind: "blocked", reason: "canary-leak", quarantined };
+  if (squash(text).includes(squash(options.canary))) return { kind: "blocked", reason: "canary-leak", quarantined };
   if (disallowedLink(text, options.allowedDomains)) return { kind: "blocked", reason: "disallowed-link", quarantined };
   return { kind: "answer", text, quarantined };
 }

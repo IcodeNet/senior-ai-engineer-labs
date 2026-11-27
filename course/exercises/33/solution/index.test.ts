@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import assert from "node:assert/strict";
 import {
   backoffDelay,
@@ -25,6 +25,17 @@ test("withTimeout returns fast results and rejects slow ones with TimeoutError, 
     TimeoutError,
   );
   assert.equal(seen?.aborted, true);
+});
+
+test("withTimeout clears its timer once the call settles", async () => {
+  vi.useFakeTimers();
+  try {
+    assert.equal(await withTimeout(async () => "ok", 60_000), "ok");
+    await assert.rejects(withTimeout(async () => { throw new HttpError(500); }, 60_000), HttpError);
+    assert.equal(vi.getTimerCount(), 0);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("only timeouts, throttling and server errors are retryable", () => {
@@ -92,6 +103,25 @@ test("a success resets the failure count", async () => {
   await breaker.call(async () => "ok");
   await assert.rejects(breaker.call(async () => { throw new HttpError(500); }));
   assert.equal(breaker.state(), "closed");
+});
+
+test("caller errors (4xx) do not open the circuit for everyone", async () => {
+  let clock = 0;
+  const breaker = new CircuitBreaker({ failureThreshold: 2, cooldownMs: 1000, now: () => clock });
+  for (let i = 0; i < 5; i++) await assert.rejects(breaker.call(async () => { throw new HttpError(422); }), HttpError);
+  assert.equal(breaker.state(), "closed");
+  await assert.rejects(breaker.call(async () => { throw new HttpError(503); }));
+  await assert.rejects(breaker.call(async () => { throw new HttpError(400); }));
+  await assert.rejects(breaker.call(async () => { throw new HttpError(503); }));
+  assert.equal(breaker.state(), "closed", "a 400 means the dependency answered, so the failure streak resets");
+  await assert.rejects(breaker.call(async () => { throw new HttpError(503); }));
+  assert.equal(breaker.state(), "open");
+  clock = 1000;
+  await assert.rejects(breaker.call(async () => { throw new HttpError(404); }), HttpError);
+  assert.equal(breaker.state(), "closed", "a caller error on the half-open trial still proves the dependency is up");
+  const strict = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 1000, now: () => 0, isFailure: () => true });
+  await assert.rejects(strict.call(async () => { throw new HttpError(400); }));
+  assert.equal(strict.state(), "open");
 });
 
 test("fallbacks degrade gracefully and say so", async () => {

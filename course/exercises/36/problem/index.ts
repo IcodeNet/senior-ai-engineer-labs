@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 export type AttributeValue = string | number | boolean;
 
@@ -59,16 +59,29 @@ export function summariseTrace(spans: SpanRecord[], traceId: string): TraceSumma
   throw new Error("Not implemented: summariseTrace");
 }
 
-export function pseudonymise(value: string, salt: string): string {
-  // TODO: first 16 hex characters of sha256('<salt>:<value>').
+/**
+ * HMAC-SHA-256 keyed with a secret held in a key vault, truncated to 16 hex characters. A plain or salted hash of a
+ * guessable ID (u-0001…u-9999) can be reversed by anyone who knows the salt by hashing every candidate; without the
+ * key that enumeration is impossible. The output is still personal data under GDPR (pseudonymised, not anonymised).
+ */
+export function pseudonymise(value: string, key: string): string {
+  // TODO: first 16 hex characters of HMAC-SHA-256(key, value); throw on an empty key.
   throw new Error("Not implemented: pseudonymise");
+}
+
+/** Masks emails, IBAN-like strings and long digit runs (cards, accounts) in free text. */
+export function maskFreeText(text: string): string {
+  return text
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[EMAIL]")
+    .replace(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b/g, "[IBAN]")
+    .replace(/\d(?:[ -]?\d){12,}/g, "[NUMBER]");
 }
 
 export function safeLogRecord(
   event: string,
   fields: Record<string, unknown>,
-  policy: { allow: string[]; pseudonymise: string[]; salt: string; maxLength?: number },
+  policy: { allow: string[]; pseudonymise: string[]; key: string; maxLength?: number },
 ): Record<string, AttributeValue> {
-  // TODO: keep only allow-listed primitives, pseudonymise listed IDs, mask emails, truncate strings, list dropped keys.
+  // TODO: keep only allow-listed primitives, pseudonymise listed IDs, mask free text, truncate strings, list dropped keys.
   throw new Error("Not implemented: safeLogRecord");
 }

@@ -55,8 +55,14 @@ function escape(text: string): string {
 }
 
 function disallowedLink(output: string, allowedDomains: string[]): boolean {
-  // TODO: true if any http(s) URL in the output has a hostname outside allowedDomains (subdomains allowed).
+  // TODO: true if any http(s)://, //host or www. link has a host outside allowedDomains (exact or subdomain).
   throw new Error("Not implemented: disallowedLink");
+}
+
+/** Letters and digits only, lower-cased: "C-A-N A R Y" and "canary" compare equal. */
+function squash(text: string): string {
+  // TODO: keep only letters and digits, lower-cased.
+  throw new Error("Not implemented: squash");
 }
 
 export async function guardedAnswer(question: string, docs: Doc[], options: GuardOptions): Promise<GuardResult> {

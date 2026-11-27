@@ -20,13 +20,17 @@ export interface ReleaseMetrics {
   requests: number;
   errors: number;
   p95Ms: number;
+  /** Mean judge score over the judged sample, not over every request. */
   groundedness: number;
+  judgedSamples: number;
   costPerQuery: number;
   safetyViolations: number;
 }
 
 export interface RolloutPolicy {
   minRequests: number;
+  /** Groundedness comes from judging a sample, so it needs its own minimum. */
+  minJudgedSamples: number;
   /** Absolute increase in error rate allowed, e.g. 0.01 = one percentage point. */
   maxErrorRateIncrease: number;
   /** Relative increases allowed, e.g. 0.2 = 20%. */
@@ -55,9 +59,11 @@ export function bucketOf(key: string): number {
   return hash % 100;
 }
 
-export function assignVariant(userId: string, canaryPercent: number, salt = "release"): Variant {
+/** Salted by release ID, so each release's canary is a different slice of users (not the same 1% every time). */
+export function assignVariant(userId: string, canaryPercent: number, releaseId: string): Variant {
   if (canaryPercent < 0 || canaryPercent > 100) throw new RangeError("canaryPercent must be between 0 and 100");
-  return bucketOf(`${salt}:${userId}`) < canaryPercent ? "canary" : "baseline";
+  if (!releaseId) throw new Error("releaseId is required");
+  return bucketOf(`${releaseId}:${userId}`) < canaryPercent ? "canary" : "baseline";
 }
 
 export function shadowAgreement(pairs: ShadowPair[]): ShadowReport {
@@ -76,7 +82,10 @@ export function shadowAgreement(pairs: ShadowPair[]): ShadowReport {
 
 export function rolloutDecision(baseline: ReleaseMetrics, canary: ReleaseMetrics, policy: RolloutPolicy): RolloutDecision {
   if (canary.safetyViolations > 0) return { action: "rollback", reasons: ["safety-violations"] };
-  if (canary.requests < policy.minRequests) return { action: "hold", reasons: ["insufficient-traffic"] };
+  const short: string[] = [];
+  if (canary.requests < policy.minRequests) short.push("insufficient-traffic");
+  if (canary.judgedSamples < policy.minJudgedSamples) short.push("insufficient-judged-samples");
+  if (short.length) return { action: "hold", reasons: short };
   const errorRate = (m: ReleaseMetrics) => (m.requests === 0 ? 0 : m.errors / m.requests);
   const reasons: string[] = [];
   if (errorRate(canary) - errorRate(baseline) > policy.maxErrorRateIncrease) reasons.push("error-rate");

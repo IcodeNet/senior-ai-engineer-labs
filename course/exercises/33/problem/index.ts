@@ -57,7 +57,15 @@ export class CircuitBreaker {
   private failures = 0;
   private openedAt: number | undefined;
 
-  constructor(private readonly options: { failureThreshold: number; cooldownMs: number; now: () => number }) {}
+  constructor(
+    private readonly options: {
+      failureThreshold: number;
+      cooldownMs: number;
+      now: () => number;
+      /** Which errors say the dependency is unhealthy. Default isRetryable: caller errors (4xx) do not count. */
+      isFailure?: (error: unknown) => boolean;
+    },
+  ) {}
 
   state(): CircuitState {
     // TODO: closed with no open time; half-open once cooldownMs has passed since opening; otherwise open.
@@ -65,7 +73,8 @@ export class CircuitBreaker {
   }
 
   async call<T>(op: () => Promise<T>): Promise<T> {
-    // TODO: fail fast when open; on success reset; on failure count, and open at the threshold or after a failed trial.
+    // TODO: fail fast when open; success or a non-failure error (isFailure, default isRetryable) resets and closes;
+    // a failure counts, and opens at the threshold or after a failed half-open trial.
     throw new Error("Not implemented: CircuitBreaker.call");
   }
 }

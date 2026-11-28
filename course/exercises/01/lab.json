@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "title": "Welcome: what you'll build and how Icode works",
+  "title": "Welcome: what you'll build and how this course works",
   "description": "Meet Northbank Support, learn how lessons, tests, actions and the cost banner work, and write the course readiness check.",
   "runtime": "node",
   "entry": "index.ts",

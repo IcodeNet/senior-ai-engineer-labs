@@ -25,7 +25,7 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 
 | Module | Steps | Status |
 |---|---|---|
-| 0 · Welcome: what you'll build, how Icode works, costs and shutdown before anything is created | 01–02 | authored |
+| 0 · Welcome: what you'll build, how this course works, costs and shutdown before anything is created | 01–02 | authored |
 | 1 · Search foundations: why retrieval, analyzers and the inverted index, BM25 | 05–07 | authored |
 | 2 · Index design: field attributes, the Northbank schema, query syntax and OData filters | 10–12 | authored |
 | Lab 03 · Real Azure (paid while running), in Module 3's step range | 17–21 | authored |

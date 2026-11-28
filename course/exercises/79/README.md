@@ -1,7 +1,7 @@
 # 79 · Tenant isolation and document ACLs
 
 ## Why it matters
-Lab 05 hardens the RAG service from the foundation modules (governed retrieval, grounded answers, evaluation) for production. The first rule: **a model can only leak what retrieval gave it.** If a credit analyst at one bank can retrieve another bank's documents, no prompt will stop the answer from containing them. Authorization belongs in the backend, never in the prompt.
+Advanced A2 hardens the RAG service from the foundation modules (governed retrieval, grounded answers, evaluation) for production. The first rule: **a model can only leak what retrieval gave it.** If a credit analyst at one bank can retrieve another bank's documents, no prompt will stop the answer from containing them. Authorization belongs in the backend, never in the prompt.
 
 In a multi-tenant assistant every document carries:
 

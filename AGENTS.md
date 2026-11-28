@@ -44,7 +44,14 @@ Each lab's documentation (`course/README.md` and its lessons) must document: obj
 - Prefer grounded, cited answers; abstain when evidence is insufficient.
 
 ## Course structure: Azure AI Search for apps and agents
-Step numbers follow `docs/course-step-map.md`: the foundation Modules 0–11 use steps 01–70, in a fixed block per module (Module 0: 01–04, Module 1: 05–09, Module 2: 10–16, Module 3: 17–24, Module 4: 25–29, and Modules 5–11: 30–66). Advanced modules A1–A3 (formerly Labs 04–06) use steps 71–94. Across the foundation, cover indexing, chunking, metadata, BM25, vector and hybrid retrieval, RRF, semantic reranking, approval filters, RAG orchestration, citations, retrieval and generation evaluations, observability and compliance. Start retrieval evaluation with K=5; compare K=10 and K=20 when useful.
+Step numbers follow `docs/course-step-map.md`: the foundation Modules 0–11 use steps 01–70, in a fixed block per module (Module 0: 01–04, Module 1: 05–09, Module 2: 10–16, Module 3: 17–24, Module 4: 25–29, and Modules 5–11: 30–66). Advanced modules A1–A3 use steps 71–94. Across the foundation, cover indexing, chunking, metadata, BM25, vector and hybrid retrieval, RRF, semantic reranking, approval filters, RAG orchestration, citations, retrieval and generation evaluations, observability and compliance. Start retrieval evaluation with K=5; compare K=10 and K=20 when useful.
+
+## Present tense only
+- Course lessons, READMEs, docs, code comments, test names and UI text describe what exists now and why, as if written fresh today.
+- Never mention history or origins: no "was Lab NN", "formerly", "renamed", "renumbered", "old labs", "predecessor", "replaces", "moved from", "previously", "now does X instead of Y", "fixed in", and no references to old commits or tags.
+- Name planned work only as a plan ("Module 7 covers evaluation"). Never point readers at old material.
+- `docs/PROGRESS.md` records current status only, not a change log. History belongs in commit messages and PR descriptions.
+- The Agent Factory rule `present-tense` flags these phrases in `course/`, `docs/` and `README.md`.
 
 ## Definition of done
 A lab is complete only when the documented code actually runs, tests and relevant evaluations pass, cost implications are documented, cloud resources can be safely cleaned up, and design trade-offs can be explained at senior AI engineer level.

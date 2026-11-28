@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs the pinned Icode Workshop engine against this course.
 import { spawnSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,7 +41,13 @@ function installEngine() {
   if (win) run("cmd.exe", ["/d", "/s", "/c", args.join(" ")], engine);
   else run(args[0], args.slice(1), engine);
 }
-if (command === "setup" && !existsSync(join(engine, "node_modules"))) installEngine();
+// The engine is reinstalled whenever the pinned commit differs from the one last installed.
+const marker = join(engine, "node_modules", ".icode-installed-commit");
+const installed = existsSync(marker) ? readFileSync(marker, "utf8").trim() : null;
+if (command === "setup" && (!existsSync(join(engine, "node_modules")) || (!process.env.ICODE_ENGINE_DIR && installed !== pin.commit))) {
+  installEngine();
+  if (!process.env.ICODE_ENGINE_DIR) writeFileSync(marker, pin.commit + "\n");
+}
 
 const child = spawn(process.execPath, [join(engine, "packages/cli/bin.mjs"), ...process.argv.slice(2), "--content", root], {
   stdio: "inherit",

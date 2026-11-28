@@ -1,4 +1,4 @@
-# 01 · Welcome: what you'll build and how Icode works
+# 01 · Welcome: what you'll build and how this course works
 
 *Module 0 · Welcome · step 1 of 2 · Track: TypeScript*
 
@@ -23,7 +23,7 @@ Why a senior engineer cares: most "RAG" failures are retrieval and governance fa
 
 ## Theory
 
-**How Icode works.** Each step is a folder with a lesson (this README), a **Playground** you edit (`problem/`), tests and a reference solution (`solution/`). The tests run in the workshop with **Run tests**. A starter always fails with `Not implemented: <function>`; your job is to make it pass. Your work is saved in `.workshop/`, survives restarts, and **Reset** restores the starter while keeping a backup.
+**How this course works.** Each step is a folder with a lesson (this README), a **Playground** you edit (`problem/`), tests and a reference solution (`solution/`). The tests run in the workshop with **Run tests**. A starter always fails with `Not implemented: <function>`; your job is to make it pass. Your work is saved in `.workshop/`, survives restarts, and **Reset** restores the starter while keeping a backup.
 
 The tests are practice feedback, not grading. You can read them, and you should: they are the specification. They are not tamper-proof and do not need to be.
 

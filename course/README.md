@@ -47,11 +47,11 @@ Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course
 | 53–56 | 9 · React FAQ app | planned | FAQ UI with citations and safe rendering |
 | 57–62 | 10 · Agent | planned | Search as an MCP tool, authorized actions, agentic retrieval |
 | 63–66 | 11 · Operate and finish | planned | Tiers and capacity, shutdown and verify, capstone |
-| 71–78 | **Advanced A1 · Agent engineering and MCP** | existing (was Lab 04, steps 22–29) | Tool schemas, the agent loop, retries and idempotency, planning, human approval, MCP server and client, agent evaluation |
-| 79–86 | **Advanced A2 · Production AI** | existing (was Lab 05, steps 30–37) | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
-| 87–94 | **Advanced A3 · Architecture and interview drills** | existing (was Lab 06, steps 38–45) | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
+| 71–78 | **Advanced A1 · Agent engineering and MCP** | authored | Tool schemas, the agent loop, retries and idempotency, planning, human approval, MCP server and client, agent evaluation |
+| 79–86 | **Advanced A2 · Production AI** | authored | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
+| 87–94 | **Advanced A3 · Architecture and interview drills** | authored | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
 
-The advanced modules keep their original lessons (each with an interview question) until they are reworked to the step template. The pre-redesign course (Labs 01–06) is at commit `2ff7c3d` on `main`, to be tagged `v0-labs` by the owner.
+The advanced modules use a lesson format built around an interview question. Moving them to the step template is planned.
 
 ## Modules 0–2 — welcome, search foundations and index design (local, free)
 
@@ -107,7 +107,7 @@ Region and models are set in `azure/config.json` (default `swedencentral`). `azu
 
 **Objective:** harden a RAG service for production in a regulated firm: enforce access in retrieval, keep PII out of prompts and logs, resist prompt injection and measure it, survive provider failures, share capacity fairly, cache safely, observe every request, and release changes behind metrics-driven rollback.
 
-**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 will teach (until then, see commit `2ff7c3d`, to be tagged `v0-labs`). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
+**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 cover (planned). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
 
 **Run and check:** open steps 79–86 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
 

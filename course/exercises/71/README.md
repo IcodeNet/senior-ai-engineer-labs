@@ -1,7 +1,7 @@
 # 71 · Tool schemas and argument validation
 
 ## Why it matters
-Lab 04 builds an **expenses assistant** for a fictional firm: it looks up policy, converts currencies and submits or refunds claims. Every capability is a **tool** the model can ask to call. A tool definition has three parts — a name, a description and a JSON Schema for its input — and all three are **prompt**: the model chooses tools and fills arguments from them. Vague descriptions and loose schemas produce wrong calls.
+Advanced A1 builds an **expenses assistant** for a fictional firm: it looks up policy, converts currencies and submits or refunds claims. Every capability is a **tool** the model can ask to call. A tool definition has three parts — a name, a description and a JSON Schema for its input — and all three are **prompt**: the model chooses tools and fills arguments from them. Vague descriptions and loose schemas produce wrong calls.
 
 Function calling does not make a model's output trustworthy. It returns a name and a JSON *string*; the name can be invented, the JSON can be broken and the values can be out of range, even with "strict" structured-output modes (which constrain shape, not business rules). So:
 

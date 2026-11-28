@@ -29,11 +29,11 @@ export function checkModel(models, wanted, now, minDaysLeft = 7) {
   return { ok: true, retires: retires ?? null };
 }
 
-/** Hourly Basic search unit price from Azure Retail Prices API items, or null when not found. */
+/** Hourly Basic search unit price from Azure Retail Prices API items, or null when not found. Only the search-unit meter counts. */
 export function searchBasicHourly(items) {
   const prices = items
-    .filter((i) => i.type === "Consumption" && i.skuName === "Basic" && /hour/i.test(i.unitOfMeasure ?? "") && i.retailPrice > 0)
-    .map((i) => ({ price: i.retailPrice, currency: i.currencyCode }));
+    .filter((i) => i.type === "Consumption" && i.skuName === "Basic" && /\bunit\b/i.test(i.meterName ?? "") && /hour/i.test(i.unitOfMeasure ?? "") && i.retailPrice > 0)
+    .map((i) => ({ price: i.retailPrice, currency: i.currencyCode, meter: i.meterName }));
   if (prices.length === 0) return null;
   return prices.sort((a, b) => a.price - b.price)[0];
 }
@@ -51,9 +51,10 @@ export function isCourseGroup(group, courseTag) {
 }
 
 /** Everything that still exists after shutdown and could keep a name reserved or incur charges. */
-export function remainingAfterTeardown({ groupExists, taggedResources, deletedAccounts }) {
+export function remainingAfterTeardown({ groupExists, group, taggedGroups = [], taggedResources, deletedAccounts }) {
   const remaining = [];
-  if (groupExists) remaining.push("resource group still exists");
+  if (groupExists) remaining.push(`resource group ${group ?? ""} still exists`.replace("  ", " "));
+  for (const name of taggedGroups) if (!(groupExists && name.toLowerCase() === (group ?? "").toLowerCase())) remaining.push(`course-tagged resource group ${name}`);
   for (const resource of taggedResources) remaining.push(`resource ${resource.type} ${resource.name}`);
   for (const account of deletedAccounts) remaining.push(`soft-deleted account ${account.name} (not purged)`);
   return remaining;
@@ -90,19 +91,69 @@ export const COST_MARKERS = {
 /**
  * Marker changes after an Azure state check. Fails closed: only a successful check in the subscription
  * the resources were created in can clear a banner.
- * state: { kind: "unknown", reason } | { kind: "remaining", items } | { kind: "zero" }
+ * state: { kind: "unknown", reason, ...known } | { kind: "remaining", items, ...known } | { kind: "zero" }
  */
 export function markerChanges(state, now = new Date()) {
-  if (state.kind === "zero") return { write: {}, remove: [COST_MARKERS.env, COST_MARKERS.mayExist, COST_MARKERS.unknown] };
-  if (state.kind === "remaining")
-    return { write: { [COST_MARKERS.mayExist]: { reason: "course resources found", items: state.items, checkedAt: now.toISOString() } }, remove: [COST_MARKERS.unknown] };
-  return { write: { [COST_MARKERS.unknown]: { reason: state.reason || "Azure state could not be checked", checkedAt: now.toISOString() } }, remove: [] };
+  const { kind, ...detail } = state;
+  if (kind === "zero") return { write: {}, remove: [COST_MARKERS.env, COST_MARKERS.mayExist, COST_MARKERS.unknown] };
+  if (kind === "remaining") return { write: { [COST_MARKERS.mayExist]: { reason: "course resources found", ...detail, checkedAt: now.toISOString() } }, remove: [COST_MARKERS.unknown] };
+  return { write: { [COST_MARKERS.unknown]: { ...detail, reason: detail.reason || "Azure state could not be checked", checkedAt: now.toISOString() } }, remove: [] };
 }
 
-/** The subscription recorded by an earlier `up`, if any; a check elsewhere cannot prove the cost is zero. */
-export function recordedSubscription(markers) {
-  for (const marker of markers) if (marker && typeof marker.subscriptionId === "string" && marker.subscriptionId) return marker.subscriptionId;
-  return undefined;
+const SUBSCRIPTION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * What earlier runs recorded, from every state source (course/.azure markers and the copy outside the
+ * checkout). Fails closed: any state without one readable, consistent subscription is a problem.
+ * sources: [{ name, exists, value?, corrupt? }]
+ */
+export function resolveRecord(sources) {
+  const present = sources.filter((s) => s.exists);
+  const ids = [...new Set(present.map((s) => s.value?.subscriptionId).filter((id) => typeof id === "string" && SUBSCRIPTION_ID.test(id)).map((id) => id.toLowerCase()))];
+  const groups = [...new Set(present.map((s) => s.value?.resourceGroup).filter((g) => typeof g === "string" && g))];
+  const record = { anyState: present.length > 0, subscriptionId: ids.length === 1 ? ids[0] : undefined, resourceGroup: groups.length === 1 ? groups[0] : undefined };
+  const corrupt = present.filter((s) => s.corrupt).map((s) => s.name);
+  if (corrupt.length) record.problem = `${corrupt.join(", ")} cannot be read`;
+  else if (ids.length > 1) record.problem = `the recorded state names several subscriptions (${ids.join(", ")})`;
+  else if (groups.length > 1) record.problem = `the recorded state names several resource groups (${groups.join(", ")})`;
+  else if (record.anyState && !record.subscriptionId) record.problem = `the recorded state (${present.map((s) => s.name).join(", ")}) does not say which subscription was used`;
+  return record;
+}
+
+/**
+ * The subscription and resource group a state-changing or state-clearing command may act on.
+ * Throws (the caller records "Cost status unknown") instead of guessing.
+ */
+export function chooseTarget(record, { signedIn, explicit, computedGroup }) {
+  const current = signedIn.toLowerCase();
+  if (explicit !== undefined) {
+    if (!SUBSCRIPTION_ID.test(explicit)) throw new Error(`--subscription needs a subscription ID, got "${explicit}"`);
+    if (explicit.toLowerCase() !== current) throw new Error(`--subscription ${explicit} is not the signed-in subscription ${signedIn}. Run \`az account set --subscription ${explicit}\` first`);
+    if (record.subscriptionId && record.subscriptionId !== current) throw new Error(`the recorded state names subscription ${record.subscriptionId}, not ${explicit}`);
+    return { subscriptionId: current, group: record.resourceGroup ?? computedGroup, recorded: true, groupRecorded: Boolean(record.resourceGroup) };
+  }
+  if (record.problem)
+    throw new Error(`Cannot tell which subscription Lab 03 used: ${record.problem}. Sign in to the subscription you used (\`az account set --subscription <id>\`), then from course/ run \`npm run azure:verify -- --subscription <id>\` to sweep it for course-tagged resources`);
+  if (record.subscriptionId && record.subscriptionId !== current)
+    throw new Error(`Course resources were recorded in subscription ${record.subscriptionId}, but you are signed in to ${signedIn}. Run \`az account set --subscription ${record.subscriptionId}\` and try again`);
+  return { subscriptionId: current, group: record.resourceGroup ?? computedGroup, recorded: Boolean(record.subscriptionId), groupRecorded: Boolean(record.resourceGroup) };
+}
+
+/** After `.azure/` is lost, the record kept outside the checkout must bring a banner back. */
+export function lostStateMarker(durable, markersPresent) {
+  if (!durable.exists || markersPresent) return undefined;
+  return {
+    reason: durable.corrupt
+      ? `the Lab 03 state record outside the course (${durable.path}) cannot be read`
+      : `course/.azure was removed, but Lab 03 set-up recorded resources (record: ${durable.path})`,
+    subscriptionId: durable.value?.subscriptionId,
+    resourceGroup: durable.value?.resourceGroup,
+  };
+}
+
+/** Confirmation text that reached stdin before the prompt was shown is a pre-answer, never a confirmation. */
+export function preAnswered({ bytesBeforePrompt }) {
+  return bytesBeforePrompt > 0;
 }
 
 /** Pay-per-token meters for a model from Azure Retail Prices API items (names vary: "gpt-5-mini", "gpt 5 mini", "GPT5 Mini"). */

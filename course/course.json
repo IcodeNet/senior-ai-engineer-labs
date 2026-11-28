@@ -301,8 +301,13 @@
     },
     {
       "path": ".azure/cost-status-unknown.json",
-      "message": "Cost status unknown: the last Azure check failed (reason in course/.azure/cost-status-unknown.json). Paid Lab 03 resources may still exist. Sign in with az login and run “Verify cost is zero”.",
+      "message": "Cost status unknown: Lab 03 cannot confirm what exists in Azure (a check failed, the subscription is unclear, or course/.azure was removed; reason in course/.azure/cost-status-unknown.json). Paid resources may still exist. Sign in to the subscription you used and run “Verify cost is zero”.",
       "level": "danger"
     }
-  ]
+  ],
+  "sidecars": {
+    "azure-cost-watch": {
+      "script": "azure:watch"
+    }
+  }
 }

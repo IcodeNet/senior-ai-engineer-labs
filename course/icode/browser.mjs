@@ -8,12 +8,15 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createServer } from "node:net";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 // Azure is never reached: live tests are off, and az gets an empty config directory, so it is signed out.
+// The Lab 03 state record outside the checkout goes to a throwaway config directory, never the learner's own.
 const azureConfig = await mkdtemp(join(tmpdir(), "icode-no-azure-"));
-const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0", AZURE_CONFIG_DIR: azureConfig } });
+const configHome = await mkdtemp(join(tmpdir(), "icode-config-"));
+const outsideRecord = join(configHome, "icode-workshop", "senior-ai-engineer-labs-azure.json");
+const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0", AZURE_CONFIG_DIR: azureConfig, XDG_CONFIG_HOME: configHome } });
 const closed = once(child, "close");
 let logs = "";
 for (const stream of [child.stdout, child.stderr]) stream.on("data", (x) => (logs = (logs + x).slice(-8000)));
@@ -107,28 +110,35 @@ try {
   evidence.push("“Plan Azure set-up” runs from the Actions tab and stops at the missing az sign-in (no Azure call)");
   await page.screenshot({ path: join(root, "acceptance-results/actions.png"), fullPage: true });
 
-  // Cost banner fails closed. Only exercised when this checkout has no real Azure state.
+  // Cost banner fails closed. Only exercised when this checkout has no real Azure state: a state record outside the
+  // checkout with no course/.azure (as after `git clean`) makes the azure-cost-watch sidecar restore "Cost status unknown".
   if (!existsSync(join(root, ".azure"))) {
     const banner = page.getByRole("region", { name: "Course status" });
+    const bannerText = async () => ((await banner.count()) ? ((await banner.textContent()) ?? "") : "");
     try {
-      await mkdir(join(root, ".azure"));
-      await writeFile(join(root, ".azure/cost-status-unknown.json"), JSON.stringify({ reason: "browser acceptance" }));
-      await page.reload();
-      await until(async () => /Cost status unknown/.test((await banner.textContent().catch(() => "")) ?? ""), "the cost-unknown banner must show", 200);
+      await mkdir(dirname(outsideRecord), { recursive: true });
+      await writeFile(outsideRecord, JSON.stringify({ subscriptionId: "00000000-0000-0000-0000-000000000000", resourceGroup: "rg-saiel-course-browser" }));
+      await until(async () => {
+        await page.reload();
+        await page.locator("button.exercise").first().waitFor();
+        return /Cost status unknown/.test(await bannerText());
+      }, "the sidecar must restore a Cost status unknown banner when course/.azure is missing", 30);
       await page.screenshot({ path: join(root, "acceptance-results/cost-banner.png") });
     } finally {
+      await rm(outsideRecord, { force: true });
       await rm(join(root, ".azure"), { recursive: true, force: true });
     }
     await page.reload();
     await page.locator("button.exercise").first().waitFor();
-    await until(async () => (await banner.count()) === 0, "the banner must clear when the marker is gone", 200);
-    evidence.push("Cost banner shows “Cost status unknown” for the marker and clears when it is removed");
+    await until(async () => (await banner.count()) === 0, "the banner must clear when the state is gone", 200);
+    evidence.push("With only the outside state record, the azure-cost-watch sidecar restores “Cost status unknown”; it clears when the state is gone");
   } else evidence.push("Cost banner check skipped: this checkout has real .azure state");
 } finally {
   await browser?.close();
   if (child.exitCode === null) child.kill("SIGTERM");
   await closed;
   await rm(azureConfig, { recursive: true, force: true });
+  await rm(configHome, { recursive: true, force: true });
 }
 for (const port of [4317, 5173]) await released(port);
 evidence.push("Stopping the workshop releases ports 4317 and 5173");

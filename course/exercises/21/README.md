@@ -29,7 +29,14 @@ When the live test has passed and you have read the results, open the **Actions*
    - deletes the whole resource group (Azure AI Search, the Azure OpenAI account and its deployments, and the role assignments scoped to them). This takes several minutes;
    - purges the soft-deleted Azure OpenAI account. Deleted Azure OpenAI (Cognitive Services) accounts are kept in a soft-deleted state for a retention period. Purging frees the name, and nothing of the account remains;
    - removes `course/.azure/env.json`, then runs Verify.
-2. **Verify cost is zero** (terminal: `npm run azure:verify`). It checks the subscription for the resource group, any resource tagged `course=senior-ai-engineer-labs` and soft-deleted accounts from the course group. Only when all three are empty does it print `✔ Verified: no course resources remain … This course incurs no further charges.` and clear the cost banner.
+2. **Verify cost is zero** (terminal: `npm run azure:verify`). It works in the subscription and resource group **recorded at set-up**, never a name recomputed from whoever is signed in now. There it sweeps:
+   - the recorded resource group;
+   - every resource group and resource tagged `course=senior-ai-engineer-labs`, in any group;
+   - soft-deleted Azure OpenAI accounts from any `rg-saiel-course-…` group.
+
+   Only when all of these are empty does it print `✔ Verified: no course resources remain … This course incurs no further charges there.` Only then does it clear the cost banner and the record kept outside the course folder (lesson 17).
+
+Shutdown, too, uses the recorded resource group. Without any record (for example after deleting `course/.azure/` on a new machine), it finds the course-tagged groups whose `owner` tag is you, and asks you to type each name. It never deletes another owner's group.
 
 Together these remove **every paid resource** the course created: nothing billable lives outside the resource group. Cancelling the dialog deletes nothing, and charges continue.
 
@@ -53,6 +60,19 @@ Verify lists what remains and the "may exist" banner stays. In order:
    In the portal, this is Azure AI services → Manage deleted resources.
 4. Run **Verify cost is zero** again until it passes.
 
-If Verify reports **Cost status unknown** instead, it could not check. You are signed out, `az` is missing, or a different subscription is selected (it names the subscription the resources were created in: `az account set --subscription <id>`). Fix that and verify again. The banner never clears on a failed check.
+In a shared subscription, Verify also reports other learners' course groups, because they carry the same tag. Leave those to their owners. Your banner stays on while they exist, so tell them, or ask your subscription admin.
+
+If Verify reports **Cost status unknown** instead, it could not check, and it neither prints "no further charges" nor removes anything:
+- **Signed out, or `az` missing:** run `az login` and verify again.
+- **A different subscription is selected:** Verify names the subscription the resources were recorded in. Run `az account set --subscription <id>` and verify again.
+- **The record is unreadable, or does not say which subscription you used** (for example, a damaged `course/.azure/env.json`): sign in to the subscription you used, then from `course/` in a terminal run
+
+  ```sh
+  npm run azure:verify -- --subscription <subscription id>
+  ```
+
+  It must be the signed-in subscription. Verify sweeps it by the course tag as above, and clears the banner only if the sweep is empty there.
+
+The banner never clears on a failed check, and **Azure status and cost so far** never clears it.
 
 **Budget alerts do not cap spend.** A budget only emails you; resources keep billing until they are deleted. Stopping Icode, shutting your laptop or the `expiresAt` tag passing does not delete anything either. Only a passing Verify tells you the course costs nothing further.

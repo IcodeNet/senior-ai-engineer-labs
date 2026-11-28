@@ -24,7 +24,7 @@ resource search 'Microsoft.Search/searchServices@2023-11-01' = {
   name: 'srch-saiel-${suffix}'
   location: location
   tags: tags
-  sku: { name: 'basic' } // Basic or higher is required for semantic ranker; billed per hour while it exists.
+  sku: { name: 'basic' } // Keyless (Entra ID/RBAC) data-plane access needs a billable tier, Basic or higher; billed per hour while it exists.
   properties: {
     replicaCount: 1
     partitionCount: 1

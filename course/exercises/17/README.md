@@ -7,7 +7,7 @@ Everything in this section runs from the **Actions** tab of the output panel, gr
 
 ### Prerequisites
 - **An Azure subscription** you may spend a few dollars in. A free-trial or Visual Studio subscription works if it allows Azure OpenAI and Azure AI Search Basic.
-- **Permission to create resource groups and role assignments** in it: **Owner**, or **Contributor plus User Access Administrator** (Role Based Access Control Administrator also grants role assignments). Set-up gives your own account data-plane roles on the new resources because API keys are disabled. Contributor alone fails at the role-assignment step.
+- **Permission to create resource groups and role assignments** in it: **Owner**, or **Contributor plus User Access Administrator** (Role Based Access Control Administrator also grants role assignments). Set-up gives your own account data-plane roles on the new resources because API keys are disabled. Contributor alone fails at the role-assignment step. Assign these roles **at subscription scope**: Shut down purges the soft-deleted Azure OpenAI account, which needs `Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts/delete`, and when that comes through Contributor it must be assigned at the subscription level.
 - **The Azure CLI** ([install](https://aka.ms/azure-cli)), signed in as a user rather than a service principal. The course scripts use your `az` login for everything; they never ask for or store a key or secret. From a terminal:
 
   ```sh
@@ -28,7 +28,14 @@ Everything in this section runs from the **Actions** tab of the output panel, gr
 | Shut down Azure (delete everything) | `npm run azure:down` | Asks you to type the resource group name, deletes the group, purges the soft-deleted Azure OpenAI account, then runs Verify. | Stops billing |
 | Verify cost is zero | `npm run azure:verify` | Checks the subscription for anything left with the course tag, including soft-deleted accounts. | None |
 
-**Typed confirmations.** Set up and Shut down are marked **Destructive**. When one needs your confirmation, Icode opens a dialog. The confirm button stays disabled until you type the exact text: `create`, or the resource group name. **Cancel** sends nothing, and the script stops without changing anything. In a terminal, the same scripts ask at the prompt. They refuse piped or scripted input (`echo create | npm run azure:up` does nothing), so a confirmation always comes from a person.
+**Typed confirmations.** Set up and Shut down are marked **Destructive**. When one needs your confirmation, Icode opens a dialog. The confirm button stays disabled until you type the exact text: `create`, or the resource group name. **Cancel** sends nothing, and the script stops without changing anything. In a terminal, the same scripts ask at the prompt.
+
+What these confirmations protect against, and what they do not: your own machine is trusted. The scripts stop **accidental and automated** answers:
+- piped input in a terminal (`echo create | npm run azure:up` does nothing);
+- a confirmation that arrives on stdin before the question is asked (refused even when the run claims to be an Icode action);
+- a confirmation request forged in some tool's output, which Icode ignores because it lacks the run's secret token.
+
+They cannot stop a program on your machine that deliberately imitates Icode, for example by waiting for the question and then answering it. Do not let scripts or AI agents run these actions for you unattended.
 
 **Running and cancelling.** An action keeps running if you reload or close the tab. Come back to the Actions tab to follow it. Only **Cancel action** stops it. Cancelling set-up or shutdown part-way can leave resources running and billing, so the cost banner stays on until **Verify cost is zero** passes.
 
@@ -39,9 +46,15 @@ The banner is driven by files in `course/.azure/`, which the scripts write. It f
 |---|---|---|
 | "Lab 03 Azure resources exist" | `.azure/env.json` exists: set-up finished | Shut down and Verify pass |
 | "Paid Lab 03 Azure resources may exist" | set-up or shutdown started but did not finish, or a check found course resources | Verify finds nothing |
-| "Cost status unknown" | the last status, shutdown or verify could not read your subscription: signed out, `az` missing, a different subscription selected, or an Azure error. The reason is in `.azure/cost-status-unknown.json`. Icode also shows this banner if it cannot check the files at all. | a later check succeeds |
+| "Cost status unknown" | Lab 03 cannot tell what exists. Either a status, shutdown or verify check failed (signed out, `az` missing, an Azure error), or it is unclear which subscription to check: you are signed in to a different one, or the record is unreadable or missing the subscription. It also shows when `course/.azure/` was deleted after set-up. The reason is in `.azure/cost-status-unknown.json`. Icode also shows this banner if it cannot check the files at all. | Verify succeeds in the recorded subscription. Status never clears it. |
 
-The banner only knows about this checkout. If you set up from another machine, run **Verify cost is zero** here to check the subscription.
+**Do not delete `course/.azure/` while resources may exist.** `git clean -X`, a fresh clone or a manual delete would remove the banner's files. To catch that, set-up also keeps a copy of the record outside the course folder:
+- `~/.config/icode-workshop/senior-ai-engineer-labs-azure.json` on Linux and macOS (`$XDG_CONFIG_HOME` if set);
+- `%APPDATA%\icode-workshop\senior-ai-engineer-labs-azure.json` on Windows.
+
+While that record exists, the workshop's `azure-cost-watch` sidecar (listed in the **Processes** tab) and every Lab 03 action restore a "Cost status unknown" banner within seconds if `course/.azure/` is gone. Only a passing **Verify cost is zero** removes the record.
+
+The record is per machine. If you set up from another machine, run **Verify cost is zero** here to check the subscription.
 
 ### Region and models
 `azure/config.json` sets the region (default `swedencentral`), the chat model (`gpt-5-mini`, version `2025-08-07`, `GlobalStandard`) and the embedding model (`text-embedding-3-small`, version `1`, `GlobalStandard`, 1536 dimensions). **Plan** refuses a model that the region does not offer, or that retires within a week, and lists the versions it found:

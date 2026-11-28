@@ -1,26 +1,38 @@
 #!/usr/bin/env node
-// Lab 03 Azure lifecycle: prices | plan | up | status | down | verify. Uses the Azure CLI (`az login` first).
+// Lab 03 Azure lifecycle: prices | plan | up | status | down | verify | watch. Uses the Azure CLI (`az login` first).
 // Runs from the Icode Workshop Actions tab (typed confirmations through the engine's per-run token) or a terminal.
-// Nothing is created or deleted without a typed confirmation; shutdown deletes only the course-tagged resource group.
-// Marker files in .azure/ drive the Icode cost banners (see course.json `indicators`) and fail closed.
+// Nothing is created or deleted without a typed confirmation; shutdown deletes only course-tagged resource groups.
+//
+// Cost state fails closed. Marker files in course/.azure/ drive the Icode cost banners (course.json `indicators`), and a
+// copy of the record lives outside the checkout so losing course/.azure/ brings back a "Cost status unknown" banner
+// (the `watch` sidecar and every command restore it). Only a verify whose sweep is empty in the recorded subscription
+// clears them.
+//
+// Threat model for confirmations: the learner's own machine is trusted. The checks stop accidental and automated
+// pre-answering (piped input, a confirmation sent before the question); they cannot stop a program on the same
+// machine that deliberately imitates Icode.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import {
   COST_MARKERS,
   checkModel,
+  chooseTarget,
   confirmChannel,
   confirmLine,
   confirmed,
   courseTags,
   estimateCost,
   isCourseGroup,
+  lostStateMarker,
   markerChanges,
   modelMeters,
-  recordedSubscription,
+  preAnswered,
   remainingAfterTeardown,
+  resolveRecord,
   resourceGroupName,
   searchBasicHourly,
 } from "./azure-lib.mjs";
@@ -29,12 +41,28 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(join(root, "azure/config.json"), "utf8"));
 const envFile = join(root, COST_MARKERS.env);
 const command = process.argv[2];
+const explicitSubscription = (() => {
+  const i = process.argv.indexOf("--subscription");
+  return i > 0 ? (process.argv[i + 1] ?? "") : undefined;
+})();
+// The record outside the checkout, shared by every clone of this course on this machine.
+const stateHome = process.platform === "win32" ? process.env.APPDATA || join(homedir(), "AppData", "Roaming") : process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+const durableFile = join(stateHome, "icode-workshop", `${config.courseTag}-azure.json`);
+
 // The confirmation token belongs to this process only: keep it out of the environment `az` inherits.
 const channel = confirmChannel({ action: process.env.ICODE_ACTION, token: process.env.ICODE_CONFIRM_TOKEN, isTTY: Boolean(process.stdin.isTTY) });
 const token = process.env.ICODE_CONFIRM_TOKEN;
 delete process.env.ICODE_CONFIRM_TOKEN;
+// Anything on stdin before the question is asked is a pre-answer and makes the confirmation fail.
+let bytesBeforePrompt = 0;
+let promptShown = false;
+if (channel === "icode" && ["up", "down"].includes(command))
+  process.stdin.on("data", (chunk) => {
+    if (!promptShown) bytesBeforePrompt += chunk.length;
+  });
 // Commands that check Azure state record "cost status unknown" when the check fails.
 let recordUnknownOnFailure = false;
+let knownTarget = {};
 
 function az(args, { json = true, allowFail = false } = {}) {
   const result = spawnSync("az", json ? [...args, "-o", "json"] : args, { encoding: "utf8", shell: process.platform === "win32", maxBuffer: 64 * 1024 * 1024 });
@@ -47,8 +75,12 @@ function az(args, { json = true, allowFail = false } = {}) {
 }
 function fail(message) {
   if (recordUnknownOnFailure) {
-    applyMarkers(markerChanges({ kind: "unknown", reason: message.split("\n")[0] }));
-    message += "\nThe Icode banner now shows “Cost status unknown” until a check succeeds.";
+    if (!knownTarget.subscriptionId) {
+      const record = resolveRecord(stateSources()); // e.g. signed out before the target was chosen
+      knownTarget = { ...(record.subscriptionId && { subscriptionId: record.subscriptionId }), ...(record.resourceGroup && { resourceGroup: record.resourceGroup }) };
+    }
+    applyMarkers(markerChanges({ kind: "unknown", reason: message.split("\n")[0], ...knownTarget }));
+    message += "\nThe Icode banner shows “Cost status unknown” until “Verify cost is zero” succeeds.";
   }
   console.error(`\n✖ ${message}`);
   process.exit(1);
@@ -58,26 +90,61 @@ function cancel(message) {
   process.exit(1);
 }
 
-function readMarker(path) {
+function readJson(path) {
+  if (!existsSync(path)) return { exists: false };
   try {
-    return JSON.parse(readFileSync(join(root, path), "utf8"));
+    const value = JSON.parse(readFileSync(path, "utf8"));
+    return value && typeof value === "object" && !Array.isArray(value) ? { exists: true, value } : { exists: true, corrupt: true };
   } catch {
-    return undefined;
+    return { exists: true, corrupt: true };
   }
 }
-function writeMarker(path, value) {
-  mkdirSync(dirname(join(root, path)), { recursive: true });
-  writeFileSync(join(root, path), JSON.stringify(value, null, 2) + "\n");
+const readMarker = (path) => readJson(join(root, path)).value;
+function writeJson(path, value) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
 }
+const writeMarker = (path, value) => writeJson(join(root, path), value);
 function applyMarkers({ write, remove }) {
   for (const path of remove) rmSync(join(root, path), { force: true });
   for (const [path, value] of Object.entries(write)) writeMarker(path, value);
 }
+/** Resources may exist: banner marker first, then the record outside the checkout. */
+function recordMayExist(detail) {
+  writeMarker(COST_MARKERS.mayExist, { ...readMarker(COST_MARKERS.mayExist), ...detail });
+  writeJson(durableFile, { courseRoot: root, ...readJson(durableFile).value, subscriptionId: detail.subscriptionId, resourceGroup: detail.resourceGroup, updatedAt: new Date().toISOString() });
+}
+/** A clean verify: drop the record outside the checkout first, so nothing can restore a banner mid-way. */
+function clearAllState() {
+  rmSync(durableFile, { force: true });
+  applyMarkers(markerChanges({ kind: "zero" }));
+  rmSync(join(root, ".azure"), { recursive: true, force: true });
+}
+function stateSources() {
+  return [
+    { name: "course/.azure/env.json", ...readJson(join(root, COST_MARKERS.env)) },
+    { name: "course/.azure/resources-may-exist.json", ...readJson(join(root, COST_MARKERS.mayExist)) },
+    { name: "course/.azure/cost-status-unknown.json", ...readJson(join(root, COST_MARKERS.unknown)) },
+    { name: durableFile, ...readJson(durableFile) },
+  ];
+}
+/** If course/.azure/ was lost while the outside record says resources may exist, bring back a banner. */
+function restoreLostState() {
+  const markersPresent = Object.values(COST_MARKERS).some((path) => existsSync(join(root, path)));
+  const marker = lostStateMarker({ path: durableFile, ...readJson(durableFile) }, markersPresent);
+  if (!marker) return false;
+  applyMarkers(markerChanges({ kind: "unknown", ...marker }));
+  return true;
+}
 
 /** One typed confirmation: from the Icode dialog (token), a terminal prompt, or refused. */
 async function ask(expected, message) {
-  if (channel === "none")
-    cancel("✖ A typed confirmation is required and cannot be piped. Run this from the Icode Workshop Actions tab or an interactive terminal. Nothing was changed.");
+  if (channel === "none") cancel("✖ A typed confirmation is required and cannot be piped. Run this from the Icode Workshop Actions tab or an interactive terminal. Nothing was changed.");
+  // Let any input already waiting on stdin arrive (the event loop is blocked while az runs) before deciding.
+  if (channel === "icode") await new Promise((done) => setTimeout(done, 250));
+  if (preAnswered({ bytesBeforePrompt }))
+    cancel("✖ Input arrived before the confirmation was asked for, so it is not a confirmation. Confirm in the Icode dialog when it opens. Nothing was changed.");
+  promptShown = true;
   if (channel === "icode") console.log(confirmLine(token, expected, message));
   else process.stdout.write(`\n${message}\nType ${expected} to continue (anything else cancels): `);
   const rl = createInterface({ input: process.stdin });
@@ -94,20 +161,34 @@ function context() {
   const account = az(["account", "show"], { allowFail: true });
   if (!account) fail("Not signed in to Azure. Run `az login` (and `az account set --subscription <id>` if you have several), then try again.");
   const owner = account.user?.name ?? "unknown";
-  return { account, owner, group: resourceGroupName(config.resourceGroupPrefix, account.id, owner), region: config.region };
+  return { account, owner, computedGroup: resourceGroupName(config.resourceGroupPrefix, account.id, owner), region: config.region };
 }
-
-/** The current subscription must be the one recorded by `up`, or a check proves nothing about the cost. */
-function requireRecordedSubscription(ctx) {
-  const recorded = recordedSubscription([readMarker(COST_MARKERS.env), readMarker(COST_MARKERS.mayExist)]);
-  if (recorded && recorded.toLowerCase() !== ctx.account.id.toLowerCase())
-    fail(`Course resources were created in subscription ${recorded}, but you are signed in to ${ctx.account.id}. Run \`az account set --subscription ${recorded}\` and check again.`);
+/** Subscription and resource group from the recorded state, never guessed (see chooseTarget). */
+function target(ctx, { explicit } = {}) {
+  const record = resolveRecord(stateSources());
+  knownTarget = { ...(record.subscriptionId && { subscriptionId: record.subscriptionId }), ...(record.resourceGroup && { resourceGroup: record.resourceGroup }) };
+  try {
+    const chosen = chooseTarget(record, { signedIn: ctx.account.id, explicit, computedGroup: ctx.computedGroup });
+    knownTarget = { subscriptionId: chosen.subscriptionId, resourceGroup: chosen.group };
+    return { ...chosen, anyState: record.anyState };
+  } catch (e) {
+    fail(e.message + ".");
+  }
 }
+const inGroup = (group) => (account) => account.id?.toLowerCase().includes(`/resourcegroups/${group.toLowerCase()}/`);
+const courseGroupName = (account) => /\/resourcegroups\/([^/]+)\//i.exec(account.id ?? "")?.[1] ?? "";
 
-async function retail(filter) {
+async function retail(filter, { allowOverride = false } = {}) {
+  // Test hook, honoured only for the read-only `prices` command, only with live Azure disabled and only on loopback.
+  // Plan and set-up always use the real Retail Prices API.
+  const override = process.env.ICODE_AZURE_PRICES_API;
+  const useOverride = allowOverride && override && process.env.ICODE_AZURE_LIVE === "0" && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(override);
+  if (useOverride && !retail.announced) {
+    retail.announced = true;
+    console.log(`(prices overridden for a test: ${override})`);
+  }
+  const api = useOverride ? override : "https://prices.azure.com/api/retail/prices";
   const items = [];
-  // ICODE_AZURE_PRICES_API lets offline tests point at an unreachable address; learners never need it.
-  const api = process.env.ICODE_AZURE_PRICES_API || "https://prices.azure.com/api/retail/prices";
   let url = `${api}?$filter=${encodeURIComponent(filter)}`;
   for (let page = 0; url && page < 10; page++) {
     const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
@@ -118,21 +199,21 @@ async function retail(filter) {
   }
   return items;
 }
-async function prices(region) {
+async function prices(region, options) {
   try {
-    return searchBasicHourly(await retail(`serviceName eq 'Azure Cognitive Search' and armRegionName eq '${region}' and skuName eq 'Basic' and priceType eq 'Consumption'`));
+    return searchBasicHourly(await retail(`serviceName eq 'Azure Cognitive Search' and armRegionName eq '${region}' and skuName eq 'Basic' and priceType eq 'Consumption'`, options));
   } catch {
     return null;
   }
 }
-async function tokenPrices(model, region) {
+async function tokenPrices(model, region, options) {
   // contains() is case-sensitive and meter names vary ("text-embedding-3-small-glbl", "GPT 5 Mini Inpt Glbl"), so try the common spellings.
   const words = model.name.split("-");
   const spellings = [model.name, words.join(" "), words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "), [words[0].toUpperCase(), ...words.slice(1).map((w) => w[0].toUpperCase() + w.slice(1))].join(" ")];
   const items = [];
   for (const name of new Set(spellings)) {
     try {
-      items.push(...(await retail(`priceType eq 'Consumption' and contains(meterName, '${name}')`)));
+      items.push(...(await retail(`priceType eq 'Consumption' and contains(meterName, '${name}')`, options)));
     } catch {}
   }
   const meters = modelMeters(items, model.name, region);
@@ -143,11 +224,12 @@ async function tokenPrices(model, region) {
 /** List prices only: no Azure sign-in needed, nothing is read from or created in a subscription. */
 async function showPrices() {
   const region = config.region;
+  const options = { allowOverride: true };
   console.log(`Azure Retail Prices API list prices for region ${region} (retrieved ${new Date().toISOString()}):\n`);
-  const hourly = await prices(region);
-  console.log(`Azure AI Search Basic, 1 search unit: ${hourly ? `${hourly.price} ${hourly.currency}/hour (≈ ${estimateCost(hourly.price, 24)} ${hourly.currency}/day, ≈ ${estimateCost(hourly.price, 730)} ${hourly.currency}/month)` : "not available (offline, or no Basic price for this region)"}`);
+  const hourly = await prices(region, options);
+  console.log(`Azure AI Search Basic, 1 search unit${hourly ? ` (meter "${hourly.meter}")` : ""}: ${hourly ? `${hourly.price} ${hourly.currency}/hour (≈ ${estimateCost(hourly.price, 24)} ${hourly.currency}/day, ≈ ${estimateCost(hourly.price, 730)} ${hourly.currency}/month)` : "not available (offline, or no Basic price for this region)"}`);
   for (const model of [config.chatModel, config.embeddingModel]) {
-    const meters = await tokenPrices(model, region);
+    const meters = await tokenPrices(model, region, options);
     console.log(`\n${model.name} (${model.sku}) per-token meters:`);
     if (!meters.length) console.log("  not found; see https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/");
     for (const m of meters) console.log(`  • ${m.meter} [${m.region || "global"}]: ${m.price} ${m.currency} per ${m.unit}`);
@@ -157,7 +239,8 @@ async function showPrices() {
 
 async function plan() {
   const ctx = context();
-  console.log(`Subscription: ${ctx.account.name} (${ctx.account.id})\nSigned in as: ${ctx.owner}\nRegion:       ${ctx.region}\nResource group (course only): ${ctx.group}\n`);
+  const t = target(ctx);
+  console.log(`Subscription: ${ctx.account.name} (${ctx.account.id})\nSigned in as: ${ctx.owner}\nRegion:       ${ctx.region}\nResource group (course only): ${t.group}\n`);
   const models = az(["cognitiveservices", "model", "list", "--location", ctx.region]);
   const problems = [];
   for (const wanted of [config.chatModel, config.embeddingModel]) {
@@ -165,7 +248,7 @@ async function plan() {
     console.log(`${check.ok ? "✔" : "✖"} Model ${wanted.name} ${wanted.version} (${wanted.sku})${check.ok ? (check.retires ? `, retires ${check.retires.slice(0, 10)}` : "") : `: ${check.reason}`}`);
     if (!check.ok) problems.push(check.reason);
   }
-  const hourly = await prices(ctx.region);
+  const hourly = await prices(ctx.region); // always the real Retail Prices API
   console.log("\nWhat “Set up Azure” (`npm run azure:up`) creates and what it costs:");
   console.log(`  • Azure AI Search, Basic tier, 1 search unit — billed every hour it exists: ${hourly ? `${hourly.price} ${hourly.currency}/hour (≈ ${estimateCost(hourly.price, 24)} ${hourly.currency}/day)` : "price not available; check https://azure.microsoft.com/pricing/calculator/"}`);
   console.log("  • Semantic ranker on the free plan — monthly allowance; extra requests fail instead of being billed.");
@@ -174,52 +257,52 @@ async function plan() {
   console.log("\nPrices are list prices from the Azure Retail Prices API; your agreement, currency and taxes may differ.");
   console.log("Budget alerts only notify you; they do not stop spending. Shut down as soon as you finish: deleting the resource group stops all charges.");
   if (problems.length) console.log(`\n✖ Edit azure/config.json before setting up: choose a region and model versions offered to your subscription (see the lesson).`);
-  return { ctx, problems, hourly };
+  return { ctx, t, problems, hourly };
 }
 
 async function up() {
-  const { ctx, problems, hourly } = await plan();
+  const { ctx, t, problems, hourly } = await plan();
   if (problems.length) fail(`Fix azure/config.json first (choose a model/version offered in ${ctx.region}).`);
-  if (az(["group", "exists", "--name", ctx.group])) console.log(`\nResource group ${ctx.group} already exists; it will be updated.`);
+  const group = t.group;
+  if (az(["group", "exists", "--name", group])) console.log(`\nResource group ${group} already exists; it will be updated.`);
   const answer = await ask("create", `Create billable Azure resources in subscription ${ctx.account.name} (${ctx.region})? Azure AI Search Basic is charged every hour until you shut down.`);
   if (!confirmed(answer, "create")) cancel("Cancelled. Nothing was created.");
   const principal = az(["ad", "signed-in-user", "show", "--query", "id", "-o", "tsv"], { json: false, allowFail: true });
   if (!principal) fail("Could not read your Entra ID object ID (`az ad signed-in-user show`). Sign in as a user, not a service principal.");
   const tags = courseTags(config.courseTag, ctx.owner, new Date(), config.expiresAfterHours);
-  // Marker first: the cost banner shows even if this run is interrupted or fails part-way.
-  writeMarker(COST_MARKERS.mayExist, { reason: "set up started", resourceGroup: ctx.group, subscriptionId: ctx.account.id, startedAt: tags.createdAt });
+  // Record first: the cost banner shows even if this run is interrupted or fails part-way.
+  recordMayExist({ reason: "set up started", resourceGroup: group, subscriptionId: ctx.account.id, startedAt: tags.createdAt });
   process.on("SIGINT", () => {
     console.error("\nInterrupted: some resources may exist and be billing. Run “Shut down Azure” (npm run azure:down), then “Verify cost is zero”.");
     process.exit(130);
   });
-  az(["group", "create", "--name", ctx.group, "--location", ctx.region, "--tags", ...Object.entries(tags).map(([k, v]) => `${k}=${v}`)]);
+  az(["group", "create", "--name", group, "--location", ctx.region, "--tags", ...Object.entries(tags).map(([k, v]) => `${k}=${v}`)]);
   const parameters = join(root, ".azure/parameters.json");
   writeFileSync(parameters, JSON.stringify({ principalId: { value: principal }, tags: { value: tags }, chatModel: { value: config.chatModel }, embeddingModel: { value: config.embeddingModel } }));
   console.log("Deploying (several minutes)…");
-  const deployment = az(["deployment", "group", "create", "--resource-group", ctx.group, "--name", "course", "--template-file", join(root, "azure/main.bicep"), "--parameters", `@${parameters}`]);
+  const deployment = az(["deployment", "group", "create", "--resource-group", group, "--name", "course", "--template-file", join(root, "azure/main.bicep"), "--parameters", `@${parameters}`]);
   const out = Object.fromEntries(Object.entries(deployment.properties.outputs).map(([k, v]) => [k, v.value]));
-  writeFileSync(envFile, JSON.stringify({ ...out, resourceGroup: ctx.group, region: ctx.region, subscriptionId: ctx.account.id, indexName: config.indexName, dimensions: config.embeddingModel.dimensions, createdAt: tags.createdAt, hourly }, null, 2) + "\n");
-  rmSync(join(root, COST_MARKERS.mayExist), { force: true }); // env.json now drives the banner
+  writeFileSync(envFile, JSON.stringify({ ...out, resourceGroup: group, region: ctx.region, subscriptionId: ctx.account.id, indexName: config.indexName, dimensions: config.embeddingModel.dimensions, createdAt: tags.createdAt, hourly }, null, 2) + "\n");
+  rmSync(join(root, COST_MARKERS.mayExist), { force: true }); // env.json now drives the banner; the outside record stays
   console.log(`\n✔ Created. Endpoints written to course/.azure/env.json.\n  Role assignments can take a few minutes to apply; if live tests return 403, wait and retry.\n  When you are done: “Shut down Azure” (npm run azure:down), then “Verify cost is zero” (npm run azure:verify).`);
 }
 
 function status() {
   recordUnknownOnFailure = true;
   const ctx = context();
-  requireRecordedSubscription(ctx);
-  rmSync(join(root, COST_MARKERS.unknown), { force: true });
-  if (!az(["group", "exists", "--name", ctx.group])) {
-    console.log(`No course resource group in this subscription (${ctx.group} does not exist).`);
-    if (existsSync(join(root, COST_MARKERS.env)) || existsSync(join(root, COST_MARKERS.mayExist)))
-      console.log("Run “Verify cost is zero” (npm run azure:verify) to check for anything else left and clear the cost banner.");
+  const t = target(ctx);
+  // Status never clears a banner: only a full verify can.
+  if (!az(["group", "exists", "--name", t.group])) {
+    console.log(`No course resource group ${t.group} in this subscription.`);
+    if (t.anyState) console.log("Run “Verify cost is zero” (npm run azure:verify) to check for anything else left and clear the cost banner.");
     return;
   }
-  const group = az(["group", "show", "--name", ctx.group]);
-  const resources = az(["resource", "list", "--resource-group", ctx.group]);
-  if (!existsSync(envFile)) writeMarker(COST_MARKERS.mayExist, { reason: "resource group exists", resourceGroup: ctx.group, subscriptionId: ctx.account.id, checkedAt: new Date().toISOString() });
+  const group = az(["group", "show", "--name", t.group]);
+  const resources = az(["resource", "list", "--resource-group", t.group]);
+  if (!existsSync(envFile)) recordMayExist({ reason: "resource group exists", resourceGroup: t.group, subscriptionId: ctx.account.id, checkedAt: new Date().toISOString() });
   const hours = (Date.now() - Date.parse(group.tags?.createdAt ?? new Date().toISOString())) / 3600_000;
   const env = readMarker(COST_MARKERS.env) ?? {};
-  console.log(`Resource group ${ctx.group} (created ${group.tags?.createdAt}, expires ${group.tags?.expiresAt}):`);
+  console.log(`Resource group ${t.group} (created ${group.tags?.createdAt}, expires ${group.tags?.expiresAt}):`);
   for (const r of resources) console.log(`  • ${r.type}  ${r.name}`);
   console.log(`Running for ${hours.toFixed(1)} h${env.hourly ? `; search cost so far ≈ ${estimateCost(env.hourly.price, hours)} ${env.hourly.currency} plus tokens` : ""}.`);
   console.log("Stop all charges with “Shut down Azure” (npm run azure:down).");
@@ -228,55 +311,88 @@ function status() {
 function verify() {
   recordUnknownOnFailure = true;
   const ctx = context();
-  requireRecordedSubscription(ctx);
-  const groupExists = az(["group", "exists", "--name", ctx.group]);
+  const t = target(ctx, { explicit: explicitSubscription });
+  // Sweep the whole subscription, not only the recorded group: every course-tagged group and resource, plus
+  // soft-deleted accounts from any course resource group.
+  const groupExists = az(["group", "exists", "--name", t.group]);
+  const taggedGroups = az(["group", "list", "--tag", `course=${config.courseTag}`]).map((g) => g.name);
   const taggedResources = az(["resource", "list", "--tag", `course=${config.courseTag}`]);
-  const deleted = az(["cognitiveservices", "account", "list-deleted"]);
-  const deletedAccounts = (deleted ?? []).filter((a) => a.id?.toLowerCase().includes(`/resourcegroups/${ctx.group.toLowerCase()}/`));
-  const remaining = remainingAfterTeardown({ groupExists, taggedResources, deletedAccounts });
+  const deletedAccounts = az(["cognitiveservices", "account", "list-deleted"]).filter(
+    (a) => inGroup(t.group)(a) || courseGroupName(a).toLowerCase().startsWith(`${config.resourceGroupPrefix.toLowerCase()}-`),
+  );
+  const remaining = remainingAfterTeardown({ groupExists, group: t.group, taggedGroups, taggedResources, deletedAccounts });
   if (remaining.length) {
-    applyMarkers(markerChanges({ kind: "remaining", items: remaining }));
-    writeMarker(COST_MARKERS.mayExist, { ...readMarker(COST_MARKERS.mayExist), resourceGroup: ctx.group, subscriptionId: ctx.account.id });
+    applyMarkers(markerChanges({ kind: "remaining", items: remaining, subscriptionId: t.subscriptionId, resourceGroup: t.group }));
+    recordMayExist({ subscriptionId: t.subscriptionId, resourceGroup: t.group });
     console.error(
-      `✖ Course resources remain:\n${remaining.map((r) => `  • ${r}`).join("\n")}\n` +
-        `Run “Shut down Azure” (npm run azure:down) again. If that fails, delete resource group ${ctx.group} (tag course=${config.courseTag}) in the Azure portal ` +
-        `or with \`az group delete --name ${ctx.group}\`, and purge soft-deleted accounts with \`az cognitiveservices account purge\` (see lesson 21).`,
+      `✖ Course resources remain in subscription ${ctx.account.name}:\n${remaining.map((r) => `  • ${r}`).join("\n")}\n` +
+        `In a shared subscription, some may belong to another learner's course group.\n` +
+        `Run “Shut down Azure” (npm run azure:down) again. If that fails, delete resource group ${t.group} (tag course=${config.courseTag}) in the Azure portal ` +
+        `or with \`az group delete --name ${t.group}\`, and purge soft-deleted accounts with \`az cognitiveservices account purge\` (see lesson 21).`,
     );
     process.exit(1);
   }
-  applyMarkers(markerChanges({ kind: "zero" }));
-  rmSync(join(root, ".azure"), { recursive: true, force: true });
-  console.log(`✔ Verified: no course resources remain in subscription ${ctx.account.name}. This course incurs no further charges.`);
+  if (t.anyState || t.recorded) clearAllState();
+  console.log(`✔ Verified: no course resources remain in subscription ${ctx.account.name} (${ctx.account.id}). This course incurs no further charges there.`);
 }
 
 async function down() {
   recordUnknownOnFailure = true;
   const ctx = context();
-  requireRecordedSubscription(ctx);
-  if (az(["group", "exists", "--name", ctx.group])) {
-    const group = az(["group", "show", "--name", ctx.group]);
-    if (!isCourseGroup(group, config.courseTag)) fail(`${ctx.group} is not tagged course=${config.courseTag}; refusing to delete it.`);
-    console.log(`This permanently deletes resource group ${ctx.group} and everything in it:`);
-    for (const r of az(["resource", "list", "--resource-group", ctx.group])) console.log(`  • ${r.type}  ${r.name}`);
-    const answer = await ask(ctx.group, `Permanently delete resource group ${ctx.group} and everything in it? Type the resource group name.`);
-    if (!confirmed(answer, ctx.group)) cancel("Cancelled. Nothing was deleted; charges continue while the resources exist.");
+  const t = target(ctx);
+  // The recorded group; without a record, every course-tagged group you own in this subscription.
+  let groups;
+  if (t.groupRecorded) groups = az(["group", "exists", "--name", t.group]) ? [t.group] : [];
+  else {
+    groups = az(["group", "list", "--tag", `course=${config.courseTag}`])
+      .filter((g) => (g.tags?.owner ?? "").toLowerCase() === ctx.owner.toLowerCase())
+      .map((g) => g.name);
+    if (!groups.length) console.log(`No recorded resource group, and no course-tagged group owned by ${ctx.owner} in this subscription.`);
+  }
+  for (const name of groups) {
+    const group = az(["group", "show", "--name", name]);
+    if (!isCourseGroup(group, config.courseTag)) fail(`${name} is not tagged course=${config.courseTag}; refusing to delete it.`);
+    console.log(`This permanently deletes resource group ${name} and everything in it:`);
+    for (const r of az(["resource", "list", "--resource-group", name])) console.log(`  • ${r.type}  ${r.name}`);
+    const answer = await ask(name, `Permanently delete resource group ${name} and everything in it? Type the resource group name.`);
+    if (!confirmed(answer, name)) cancel("Cancelled. Nothing was deleted; charges continue while the resources exist.");
     // Until verify proves otherwise, resources may exist (a deletion can be interrupted or fail).
-    writeMarker(COST_MARKERS.mayExist, { reason: "shutdown started", resourceGroup: ctx.group, subscriptionId: ctx.account.id, startedAt: new Date().toISOString() });
+    recordMayExist({ reason: "shutdown started", resourceGroup: name, subscriptionId: ctx.account.id, startedAt: new Date().toISOString() });
     process.on("SIGINT", () => {
       console.error("\nInterrupted: deletion may be incomplete. Run “Shut down Azure” again, then “Verify cost is zero”.");
       process.exit(130);
     });
     console.log("Deleting (several minutes)…");
-    az(["group", "delete", "--name", ctx.group, "--yes"], { json: false });
-  } else console.log(`${ctx.group} does not exist.`);
-  for (const account of (az(["cognitiveservices", "account", "list-deleted"]) ?? []).filter((a) => a.id?.toLowerCase().includes(`/resourcegroups/${ctx.group.toLowerCase()}/`))) {
+    az(["group", "delete", "--name", name, "--yes"], { json: false });
+  }
+  if (t.groupRecorded && !groups.length) console.log(`${t.group} does not exist.`);
+  const purgeFrom = new Set([t.group, ...groups].map((g) => g.toLowerCase()));
+  for (const account of az(["cognitiveservices", "account", "list-deleted"]).filter((a) => purgeFrom.has(courseGroupName(a).toLowerCase()))) {
     console.log(`Purging soft-deleted ${account.name}…`);
-    az(["cognitiveservices", "account", "purge", "--location", account.location, "--resource-group", ctx.group, "--name", account.name], { json: false });
+    az(["cognitiveservices", "account", "purge", "--location", account.location, "--resource-group", courseGroupName(account), "--name", account.name], { json: false });
   }
   for (const path of [COST_MARKERS.env, ".azure/parameters.json"]) rmSync(join(root, path), { force: true });
   verify();
 }
 
-const commands = { prices: showPrices, plan, up, status, down, verify };
-if (!commands[command]) fail("Usage: node icode/azure.mjs prices|plan|up|status|down|verify");
+/** Sidecar: keeps the banner honest if course/.azure/ is deleted while the workshop runs. Never calls Azure. */
+async function watch() {
+  const check = () => {
+    if (restoreLostState()) console.log(`${new Date().toISOString()} course/.azure was missing while Lab 03 resources may exist; restored a “Cost status unknown” banner.`);
+  };
+  console.log(`Watching Lab 03 cost state (record: ${durableFile}).`);
+  check();
+  const timer = setInterval(check, 5_000);
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
+    process.on(signal, () => {
+      clearInterval(timer);
+      process.exit(0);
+    });
+  await new Promise(() => {});
+}
+
+const commands = { prices: showPrices, plan, up, status, down, verify, watch };
+if (!commands[command]) fail("Usage: node icode/azure.mjs prices|plan|up|status|down|verify [--subscription <id>]|watch");
+if (command !== "watch" && restoreLostState()) console.error("! course/.azure was missing while Lab 03 resources may exist; the banner now shows “Cost status unknown” until Verify passes.");
 await commands[command]();
+if (command !== "watch") process.stdin.destroy();

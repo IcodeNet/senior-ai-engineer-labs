@@ -81,7 +81,7 @@ Lab 03 creates billable Azure resources. You decide when they exist; `azure:down
 
 **Extra prerequisites:** an Azure subscription; permission to create resource groups and role assignments in it (Owner, or Contributor plus User Access Administrator); and the [Azure CLI](https://aka.ms/azure-cli), signed in with `az login`. Lesson 17 covers all of it, including region and model configuration.
 
-Run everything from the workshop's **Actions** tab (group **Lab 03 · Real Azure**). Set-up and shutdown ask you to type a confirmation in an Icode dialog. Each action is also an npm script you can run from a terminal in `course/`, where the same confirmation is a prompt; piped input is refused.
+Run everything from the workshop's **Actions** tab (group **Lab 03 · Real Azure**). Set-up and shutdown ask you to type a confirmation in an Icode dialog. Each action is also an npm script you can run from a terminal in `course/`, where the same confirmation is a prompt. Confirmations guard against accidental and automated answers (piped or early input), not against a program on your machine that deliberately imitates Icode; see lesson 17.
 
 ```sh
 npm run azure:prices   # live list prices for the configured region; no sign-in, creates nothing
@@ -92,7 +92,7 @@ npm run azure:down     # deletes the course resource group after you type its na
 npm run azure:verify   # confirms nothing from the course remains; only this clears the cost banner
 ```
 
-A red cost banner shows on every lesson while course resources exist or may exist, and **"Cost status unknown"** when a check could not read the subscription. It is driven by marker files in `course/.azure/` (see lesson 17).
+A red cost banner shows on every lesson while course resources exist or may exist, and **"Cost status unknown"** when a check could not read the subscription. It is driven by marker files in `course/.azure/`. A copy of the record outside the course folder, watched by the `azure-cost-watch` sidecar, brings the banner back if `course/.azure/` is deleted. Only `azure:verify`, sweeping the recorded subscription by the course tag, clears it (see lessons 17 and 21).
 
 | What `azure:up` creates | How it is charged |
 |---|---|

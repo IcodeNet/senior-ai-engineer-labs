@@ -27,6 +27,12 @@ Course structure rules (`src/course.ts`), checked on the whole `course/` tree in
 | `course-check-questions` | The `## Check questions` section of a foundation lesson holds 3–5 fenced `question` blocks, each valid YAML with a non-empty `prompt`, `answer` and `explanation`, optional `options` (two or more distinct strings containing the answer word for word) and optional `source: handoff`, and no other keys |
 | `course-step-layout` | A step folder contains only `lab.json`, `README.md`, `problem/` and `solution/` (ignoring `node_modules`), and no dot file or folder anywhere in the step outside `node_modules` (no allowlist: no step on main needs a `.gitkeep`), so stray or hidden copies of a solution are caught |
 
+Content rule (`src/tense.ts`), checked on `README.md`, `course/` and `docs/` (skipping `node_modules`, dot folders and lockfiles):
+
+| Rule | Checks |
+|---|---|
+| `present-tense` | Course content and docs describe what exists now. A line is flagged when it names history or origins: "was Lab NN", "formerly", "renamed", "renumbered", "old labs", "predecessor", "moved from", "previously", "fixed in", "replaces the old …", "now … instead of …", "pre-redesign", or a reference to a commit or the `v0-labs` tag. Ordinary uses of "replaces" and "instead of" are not flagged. Planned work is named only as a plan |
+
 ## Run locally
 
 ```sh

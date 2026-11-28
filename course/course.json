@@ -78,7 +78,7 @@
     },
     {
       "id": "lab-03-real-azure",
-      "title": "Lab 03 · Real Azure AI Search and RAG (paid; predecessor of Module 3)",
+      "title": "Lab 03 · Real Azure AI Search and RAG (paid)",
       "exercises": [
         {
           "id": "azure-indexing",

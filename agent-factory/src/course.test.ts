@@ -163,8 +163,8 @@ it('questionProblems checks the YAML shape of a question', () => {
 it('steps outside foundation modules are exempt from the template but keep the interview question rule', () => {
   const root = course({ '71': step({ 'README.md': '# 71 · Advanced\n\n## Why it matters\nx\n\n## Interview question\n> Why?\n' }) }, ['71'], 'advanced-a1-agents-mcp');
   expect(rules(root)).toEqual([]);
-  const legacy = course({ '17': step({ 'README.md': lesson(good(1)) }) }, ['17'], 'lab-03-real-azure');
-  expect(rules(legacy)).toEqual(['course-lesson course/exercises/17/README.md']);
+  const lessonOnly = course({ '17': step({ 'README.md': lesson(good(1)) }) }, ['17'], 'lab-03-real-azure');
+  expect(rules(lessonOnly)).toEqual(['course-lesson course/exercises/17/README.md']);
 });
 
 it('the repository course passes its own structural review', () => {

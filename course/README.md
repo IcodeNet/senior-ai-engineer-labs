@@ -9,7 +9,7 @@ Every foundation step follows the same template: **Concept**, **Theory**, 3–5 
 - Node.js 22.13 or later, with npm (setup uses Corepack when present, and npx otherwise)
 - Git
 
-Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. The real-Azure steps (17–21, Module 3's predecessor) are the exception; see below and step 02.
+Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. The real-Azure steps (17–21, in Module 3's step range) are the exception; see below and step 02.
 
 ## Setup and run
 
@@ -38,7 +38,7 @@ Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course
 | 01–02 | **0 · Welcome** | authored | Course readiness check; cost estimate, cost-banner and verify-to-clear rules |
 | 05–07 | **1 · Search foundations** | authored | Governed naive retrieval under a token budget; tokenizer, analyzer and inverted index; BM25 checked against a hand-worked example |
 | 10–12 | **2 · Index design** | authored | Index-definition validator (attributes, types, vectors, names); the Northbank schema, document keys and governance review; query-parser choice and OData governance filters with schema checking |
-| 17–21 | Lab 03 · Real Azure (Module 3's predecessor) | existing, paid while running | Real index, embeddings, four query modes behind an approval filter, grounded answers, evaluation and shutdown |
+| 17–21 | Lab 03 · Real Azure | authored, paid while running | Real index, embeddings, four query modes behind an approval filter, grounded answers, evaluation and shutdown |
 | 17–24 | 3 · Provision and load (live) | planned | Bicep and typed cost confirmation; push loading; indexer, skillset, Blob `jsonArray`; knowledge store theory |
 | 25–29 | 4 · Chunking and embeddings | planned | Chunkers, cosine, vector field, integrated vectorization |
 | 30–35 | 5 · Retrieval modes | planned | Vector, hybrid with RRF, semantic ranker, bake-off |
@@ -48,11 +48,11 @@ Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course
 | 53–56 | 9 · React FAQ app | planned | FAQ UI with citations and safe rendering |
 | 57–62 | 10 · Agent | planned | Search as an MCP tool, authorized actions, agentic retrieval |
 | 63–66 | 11 · Operate and finish | planned | Tiers and capacity, shutdown and verify, capstone |
-| 71–78 | **Advanced A1 · Agent engineering and MCP** | existing (was Lab 04, steps 22–29) | Tool schemas, the agent loop, retries and idempotency, planning, human approval, MCP server and client, agent evaluation |
-| 79–86 | **Advanced A2 · Production AI** | existing (was Lab 05, steps 30–37) | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
-| 87–94 | **Advanced A3 · Architecture and interview drills** | existing (was Lab 06, steps 38–45) | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
+| 71–78 | **Advanced A1 · Agent engineering and MCP** | authored | Tool schemas, the agent loop, retries and idempotency, planning, human approval, MCP server and client, agent evaluation |
+| 79–86 | **Advanced A2 · Production AI** | authored | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
+| 87–94 | **Advanced A3 · Architecture and interview drills** | authored | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
 
-The advanced modules keep their original lessons (each with an interview question) until they are reworked to the step template. The pre-redesign course (Labs 01–06) is at commit `2ff7c3d` on `main`, to be tagged `v0-labs` by the owner.
+The advanced modules use a lesson format built around an interview question. Moving them to the step template is planned.
 
 ## Modules 0–2 — welcome, search foundations and index design (local, free)
 
@@ -62,7 +62,7 @@ The advanced modules keep their original lessons (each with an interview questio
 - **Cost:** £0. No cloud resources, API keys or network calls; data is synthetic (`corpus.ts`). Nothing to clean up. Step 02 explains the paid steps' costs and shutdown before they are reached.
 - **Limitations:** the tokenizer is a simplified standard tokenizer; BM25 scores will not equal Azure's `@search.score` (Azure computes per-shard statistics); the index validator and OData checker model a documented subset (common EDM types; no complex types, geography, `any`/`all` or functions). The service remains the authority.
 
-## Lab 03 — real Azure (paid while running; Module 3's predecessor)
+## Lab 03 — real Azure (paid while running; steps 17–21)
 
 Lab 03 creates billable Azure resources. You decide when they exist; `azure:down` removes them all.
 
@@ -107,7 +107,7 @@ Each Lab 03 step has **offline tests** (exact REST requests against a fake trans
 
 **Objective:** harden a RAG service for production in a regulated firm: enforce access in retrieval, keep PII out of prompts and logs, resist prompt injection and measure it, survive provider failures, share capacity fairly, cache safely, observe every request, and release changes behind metrics-driven rollback.
 
-**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 will teach (until then, see commit `2ff7c3d`, to be tagged `v0-labs`). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
+**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 cover (planned). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
 
 **Run and check:** open steps 79–86 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
 

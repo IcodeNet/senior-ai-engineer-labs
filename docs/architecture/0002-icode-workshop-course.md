@@ -4,14 +4,14 @@
 - Date: 2026-11-27
 
 ## Context
-Labs need lessons, interview questions, editable exercises and real tests in one place. Icode Workshop (IcodeNet/Icode-workshop) provides that workbench: per-step persistent playgrounds, reset/restore, comparison, streamed test output and course-scoped progress. Its compatibility with a real third-party course was proven by hosting MCP Fundamentals (IcodeNet/mcp-fundamentals, branch `feat/icode-workshop-host`, CI run 46013278215); the engine changes from that work were merged in IcodeNet/Icode-workshop PR #4 at `64f1fec`. The earlier home-grown player on `prototype/icode-workshop` is superseded.
+Labs need lessons, interview questions, editable exercises and real tests in one place. Icode Workshop (IcodeNet/Icode-workshop) provides that workbench: per-step persistent playgrounds, reset/restore, comparison, streamed test output and course-scoped progress. It also hosts courses in its apps layout (exercised by IcodeNet/mcp-fundamentals, branch `feat/icode-workshop-host`).
 
 ## Decision
-- The course lives in `course/` in Icode's **native** format (`course.json`, `exercises/NN/{lab.json,README.md,problem,solution}`), not the Epic compatibility layout.
+- The course lives in `course/` in Icode's **native** format (`course.json`, `exercises/NN/{lab.json,README.md,problem,solution}`), not the apps layout.
 - The engine is pinned by Git commit in `course/icode/engine.json`; no npm package is published yet.
 - `course/` is a standalone npm project with its own `package-lock.json`, because the engine's `setup` installs course dependencies with `npm ci`. It is not part of the pnpm workspace.
 - Exercises are TypeScript (strict) tested with Vitest through each variant's `test` package script (`testScript` in `lab.json`).
-- Step IDs are globally unique two-digit IDs; Lab 01 uses 01–08. Later labs continue the sequence and add a module to `course.json`.
+- Step IDs are globally unique two-digit IDs, assigned in fixed blocks per module ([step map](../course-step-map.md)); each module is registered in `course.json`.
 
 ## Consequences
 - Every step is verified through the engine itself in CI: starters fail on unimplemented code, solutions pass, and the learner journey (edit, reset, restore, progress, persistence) works; a Chromium check exercises the real UI.

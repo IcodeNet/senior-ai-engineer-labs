@@ -1,142 +1,55 @@
-# Project Progress
+# Project status
 
-Last updated: 2026-11-28
+Last updated: 2026-11-28. This file records current status only; history is in commit messages and pull requests.
 
 ## Mission
-Build an objective-driven, production-minded AI engineering learning platform and portfolio. Each lab connects theory, interview drills, runnable implementations, tests, evaluation and operational considerations.
+Build an objective-driven, production-minded AI engineering learning platform and portfolio, taught through the Icode Workshop course in `course/`. Each step connects theory, interview drills, runnable implementations, tests, evaluation and operational considerations.
 
 ## Confirmed decisions
-- Teach only through the Icode Workshop course in `course/`: native format, engine pinned by commit, TypeScript + Vitest exercises ([ADR 0002](architecture/0002-icode-workshop-course.md)).
-- The repository holds only the course and the review factory (`agent-factory/`) ([ADR 0003](architecture/0003-course-and-factory-only.md)). `AGENTS.md` and `docs/` stay until the course is ready for release.
-- Local, zero-cost exercises with deterministic fakes; any cloud integration requires a cost estimate and explicit approval first, with scoped cleanup and post-cleanup verification.
-- Use environment variables or identity credentials; never commit secrets.
-- Use synthetic or publicly approved financial-services examples.
+- Teach only through the Icode Workshop course in `course/`: native format, engine pinned by commit in `course/icode/engine.json`, TypeScript + Vitest exercises ([ADR 0002](architecture/0002-icode-workshop-course.md)).
+- The repository holds only the course and the review factory (`agent-factory/`) ([ADR 0003](architecture/0003-course-and-factory-only.md)).
+- Course structure: foundation Modules 0–11, Lab 03 in Module 3's step range, advanced modules A1–A3, fixed step-ID blocks and a step template ([ADR 0005](architecture/0005-azure-ai-search-course-redesign.md), [step map](course-step-map.md)).
+- Local, zero-cost exercises with deterministic fakes; any cloud integration requires a cost estimate and explicit approval first, with scoped cleanup and post-cleanup verification ([ADR 0004](architecture/0004-real-azure-lab.md)).
+- Use environment variables or identity credentials; never commit secrets. Use synthetic or publicly approved financial-services examples.
+- Public content is written in the present tense (see `AGENTS.md`).
 
-## Completed
-- [x] Course Lab 01 — Azure AI Search and RAG concepts, steps 01–08 (CI evidence below). Removed by the redesign branch; still at commit `2ff7c3d`, to be tagged `v0-labs` by the owner.
-- [x] Course Lab 02 — Evaluation engineering, steps 09–16 (CI evidence below). Removed by the redesign branch; still at commit `2ff7c3d`, to be tagged `v0-labs` by the owner.
-- [x] Review factory runs on every pull request and push to `main`, with course structure rules (CI evidence below).
-- [x] Repository reduced to the course and the review factory (entry dated 2026-11-27, restructure).
-- [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
-- [ ] Course Lab 06 — architecture and interview drills, steps 38–45: merged into `main` at `1508d49` via PR #8 (see entry dated 2026-11-27, Lab 06).
+## Course status
 
-## In progress
-- [ ] Course redesign, Azure AI Search for apps and agents ([ADR 0005](architecture/0005-azure-ai-search-course-redesign.md)): restructure plus Modules 0–2 (TypeScript) implemented on branch `feat/redesign-foundation-m0-2`; not merged (entry dated 2026-11-28, redesign). Modules 3–11, the quiz block in the engine, and the .NET and FastAPI tracks are planned.
-- [ ] Course Lab 04 — agent engineering and MCP, steps 22–29: implemented on branch `lab-04-agents-mcp` (PR #12), review findings addressed; not yet merged (entry dated 2026-11-27, Lab 04).
-- [ ] Course Lab 05 — production AI, steps 30–37: implemented, CI verified on PR #11, independent review changes addressed; not merged (entry dated 2026-11-27, Lab 05).
-- [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
+| Steps | Content | Status | Evidence |
+|---|---|---|---|
+| 01–02 | Module 0 · Welcome: readiness check; costs, cost banner and verify-to-clear rules | authored, CI verified | CI on `main` at `ad0623d`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46138372236 |
+| 05–07 | Module 1 · Search foundations: why retrieval, analyzers and the inverted index, BM25 | authored, CI verified | same run |
+| 10–12 | Module 2 · Index design: field attributes, the Northbank schema, query syntax and OData filters | authored, CI verified | same run |
+| 17–21 | Lab 03 · Real Azure AI Search and RAG: course actions, fail-closed cost status, verified teardown | authored, CI verified offline; **live run on a real subscription not verified** | same run (live tests disabled with `ICODE_AZURE_LIVE=0`) |
+| 71–78 | Advanced A1 · Agent engineering and MCP | authored, CI verified | same run |
+| 79–86 | Advanced A2 · Production AI | authored, CI verified | same run |
+| 87–94 | Advanced A3 · Architecture and interview drills | authored, CI verified | same run |
+| 17–66 | Modules 3–11 (rest of Module 3, chunking and embeddings, retrieval modes, governance, evaluation, RAG API, React FAQ app, agent, operate) | planned | – |
+
+The CI `course` job sets up the pinned engine, typechecks every exercise, tests the Azure lifecycle logic offline, compiles the Bicep template (nothing deployed), validates the course, runs every starter (must fail) and solution (must pass) and the learner journey through the engine, and drives the workshop UI in Chromium. Agent Factory Review on the same commit: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46138372288.
+
+Engine pin: IcodeNet/Icode-workshop `c4099e4` (course actions, typed confirmations, indicators). Check questions are authored as fenced `question` blocks and show as YAML until the course pins an engine with interactive check questions.
+
+## Review factory
+Deterministic, report-only rules run on every pull request and push to `main`: changed-path rules, course structure, the step template and check questions, step layout and present tense. See `agent-factory/README.md`. It is not independent review; `AGENTS.md`'s independent-review requirement is met only by a separate reviewer session.
+
+## Not verified
+- A live Lab 03 cycle on a real subscription (`azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify`).
+- Windows for the fake-`az` engine tests (they run on Linux and macOS), and the Lab 03 TTY confirmation prompt (manual use only).
+- A learner's own machine (Windows/macOS) end to end.
+
+## Cloud resources
+None provisioned by agents.
 
 ## Next actions
-1. Decide the next lab (agent engineering, MCP or production AI) and add it as course steps 17+.
-2. Measure the review factory's precision on real changes before letting any rule block a build.
-3. Independent review: AGENTS.md requires review the author did not perform; the deterministic factory does not meet that requirement.
-4. Optional, approval-gated: cloud steps (Azure AI Search, real model judging) with cost estimate, cleanup and verification.
+1. Module 3 (provision and load) and Modules 4–11, TypeScript track first; then the .NET and FastAPI tracks.
+2. Pin an engine commit with interactive check questions once it is on Icode-workshop `main`.
+3. Run and record the first live Lab 03 cycle (owner, approval-gated).
+4. Measure the review factory's precision on real changes before letting any rule block a build.
 
 ## Open decisions
-- Release criteria for the course (which labs, which platforms verified).
-- Whether and when to add cloud-backed steps, and on which Azure subscription, region and budget.
-
-## Planning change (2026-11-26)
-The Lab 01 README now specifies local provider architecture, an optional simulator evaluation, provider parity tests and `azd`/Bicep cloud deployment controls. **Documentation committed; no simulator integration or Lab 01 runtime implementation is claimed.**
-
-## Icode Workshop course (2026-11-27)
-- Implemented: `course/` with eight Lab 01 steps (chunking, approval/revocation, BM25, vector search, RRF, grounded prompts/citations, retrieval metrics, RAG orchestration). Each has a lesson, interview question, failing starter, Vitest tests and solution.
-- Engine: IcodeNet/Icode-workshop pinned at `64f1fec` (main after merging PR #4).
-- Local evidence (this session, not CI): `npm run setup`, `doctor`, `typecheck`, `validate` and `npm test` passed — 8 starters failed on unimplemented code, 8 solutions passed, learner journey (edit, reset, restore, progress, persistence) passed through the engine, twice.
-- CI verified on `main` at `bbbc679`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46028745534 — `course` job ran setup, doctor, typecheck, validate, engine acceptance (16 variants as expected; learner journey) and browser acceptance in Chromium (all 8 lessons open with title and interview question; starter fails from the UI; edit and save turns it green; ports 4317/5173 released). The first push (`bcd8869`, run 46028376447) failed browser acceptance because engine acceptance left the solution in the step 01 playground; fixed in `bbbc679`.
-- Not covered: Fastify/React integration, Azure AI Search, real embeddings or models, measured results. Browser acceptance cannot run in the agent sandbox (no Chromium); CI is the gate.
-- No Azure resources provisioned.
-
-## Lab 02 evaluation engineering (2026-11-27)
-- Decision: teach only through Icode Workshop; `labs/` holds specifications, infrastructure and results.
-- Implemented: course steps 09–16 (datasets, retrieval harness, groundedness checks, LLM judge, judge calibration, paired bootstrap, regression gates, cost/latency) and `labs/02-evaluation-engineering/README.md`.
-- Local evidence (this session, not CI): typecheck, validate (16 steps) and engine acceptance passed — 32 variants as expected and the learner journey.
-- CI verified on `main` at `6ca91c0`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46048874925 — engine acceptance (16 steps, 32 variants, learner journey) and browser acceptance (all 16 lessons open; starter fails and edited playground passes in the UI; ports released).
-- Not implemented: real-model judging and measured results. No Azure resources provisioned.
-
-## Review factory on main (2026-11-27)
-- Changed: `agent-review.yml` now runs on pushes to `main` as well as pull requests (work was being committed straight to `main` and was never reviewed). Fixed the artifact path, which pointed at the repo root while the report is written to `agent-factory/`.
-- Added deterministic, report-only rules: engine pin changes, teaching code under `labs/`, and course structure (step registration, problem/solution parity, starter and solution stubs, Vitest runner, interview question).
-- CI verified on `main` at `f7c511c`: Agent Factory Review run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049398955 triggered by the push, reviewed 9 changed paths with 0 findings and published the `agent-review-report` artifact; CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46049399001 passed `verify` (including the 12 factory tests) and `course`.
-- This is still a deterministic checker, not independent review; AGENTS.md's independent-review requirement is not met by it.
-
-## Phase 0 foundation (2026-11-26, superseded by ADR 0003)
-Foundation files are present on origin. CI run https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/45841315430 succeeded on commit `237bd5f` and explicitly ran install, typecheck, test and build. This does **not** establish application startup, PR-review behaviour, local reproducibility or Phase 0 completion. Evidence-first rules added to AGENTS.md; factory verification is documented but not yet automated. No Azure resources were provisioned in this verification activity.
-
-## Restructure: course and factory only (2026-11-27)
-- Removed `apps/`, `packages/`, `labs/`, `.env.example` and `docs/SETUP.md`; workspace reduced to `agent-factory`. README rewritten to describe only the course and the review factory. ADR 0003 supersedes ADR 0001. AGENTS.md references updated (evidence and approval rules unchanged), with the user's explicit instruction.
-- CI verified on `main` at `b7c2691`: CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46060395738 (`verify`, `course`) and Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46060395760. Its `teach-through-icode` finding was a false positive from deleted files; fixed in `8a39f38`. Renovate configuration merged (PR #1); PRs #3 and #4 closed. Remote branches `phase0-verification`, `phase0-negative-policy-fixture`, `prototype/icode-workshop` and `renovate/configure` still exist: the agent session is not permitted to delete branches.
-
-## Lab 03 real Azure (2026-11-27)
-- Decision: ADR 0004. Azure AI Search Basic + Azure OpenAI, one tagged resource group, keyless RBAC, typed confirmations, verified teardown.
-- Implemented: `course/azure/main.bicep`, `azure/config.json`, `icode/azure.mjs` (plan/up/status/down/verify), `icode/azure-lib.mjs` with tests, course steps 17–21 with offline and live tests.
-- Local evidence (this session, not CI): Bicep CLI 0.49.2 build and lint clean (7 resources); `test:tools` 6 tests passed; typecheck; validate (21 steps); engine acceptance 42 variants as expected with live tests skipped.
-- CI verified on `main` at `33dcf2e`: https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531684 — `course` job passed Azure lifecycle logic tests, Bicep compilation (no deployment), engine acceptance (21 steps, 42 variants, learner journey; live tests disabled) and browser acceptance (all 21 lessons). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46062531680: 93 changed paths, 0 findings.
-- Not verified: any live Azure run (no Azure CLI or subscription in the agent environment). The first `azure:plan` → `azure:up` → steps 17–21 live → `azure:down` → `azure:verify` cycle must be run and recorded here.
-- No Azure resources provisioned by the agent.
-
-## Lab 04 agent engineering and MCP (2026-11-27)
-- Implemented on branch `lab-04-agents-mcp` (PR #12, not yet on `main`): course steps 22–29 — tool schemas and argument validation, the tool-calling loop with step/tool-call/repeat limits, error classification with capped backoff and idempotency keys, a plan-and-execute state machine with bounded replanning that keeps completed steps, a human-approval gate (argument-bound, four-eyes on principals, cumulative thresholds, expiry, single use, outcome audit), an MCP server (tools, resource template, prompt) built with the official SDK, a hand-written MCP client (handshake, version negotiation, capability gating, pagination, tool vs protocol errors), and trajectory evaluation with prompt-injection cases. Module `lab-04-agents-mcp` appended to `course.json`.
-- Dependencies (devDependencies, exact pins): `@modelcontextprotocol/sdk` 1.32.2 and `zod` 4.6.7 (imported directly by step 27 and the step 28 tests). `package-lock.json` regenerated with npm; it gains 93 packages compared with `main` by a lockfile comparison in this session (the independent review counted 94 entries), mostly the SDK's HTTP/auth stack (Express, Hono, Ajv, jose), which the lab does not use. `npm audit` reports 3 advisories in vitest/tinypool that are already on `main`; upgrading vitest is left to a separate change.
-- Independent review (workstream D, separate Claude Code session, PR comment https://github.com/IcodeNet/senior-ai-engineer-labs/pull/12#issuecomment-7229157870) requested changes; addressed in a follow-up commit: prototype-key bypass in step 22 validation (and the step 23 copy), step 25 `in` checks, four-eyes through `agent:` principals, outcome-based audit and `failed` status, cumulative thresholds against payment splitting, every tool call answered when the loop stops, replans that do not repeat completed steps, the MCP error taxonomy in step 28 (spec 2025-11-25 versus SDK 1.32.2 behaviour), `-32002` for missing resources, opaque cursors, model-safe tool names, and the scorer limits in step 29.
-- Re-review (workstream D, separate session, https://github.com/IcodeNet/senior-ai-engineer-labs/pull/12#issuecomment-7229615965) found three regressions from the first fixes and four test gaps; addressed: step 26 amounts are positive whole pence (non-positive, non-finite and fractional amounts need approval and never lower the running total), amounts are reserved before awaiting and released on failure, nested `agent:` prefixes resolve to the person, per-tool totals are tested; step 25 stores and compares resolved inputs, so a step whose `$from` input changed re-runs, and `runPlan` fails on a pass without progress instead of spinning; tests added for prototype-named step IDs, tool mismatch, whole-plan reuse, several unexecuted calls in step 23, and a `null` cursor in step 28. Each named wrong implementation was checked in this session to fail the tests (agent-reported).
-- Merged `main` at `e7d6b2c` (Lab 05) into the branch with a normal merge commit; `course.json` order is Lab 01, 02, 03, 04, 05, 06.
-- Second re-review (https://github.com/IcodeNet/senior-ai-engineer-labs/pull/12#issuecomment-7229955189): removed a stray `course/exercises/25/index.ts` committed in `7ea270c` (a mutation-testing artefact) and added the factory rule `course-step-layout` with a fixture test, so files outside `lab.json`, `README.md`, `problem/` and `solution/` in a step are reported; step 25 no longer reuses a dependant while any dependency lacks a recorded result (an upstream `undefined` result is a result), with a test.
-- Local checks run by the agent in this session after that merge (agent-reported; the CI runs below are the verifiable evidence): `typecheck`, `validate` (45 steps), `test:tools`, engine acceptance with 90 variants as expected (Lab 04 solution test counts 22: 8, 23: 11, 24: 9, 25: 15, 26: 14, 27: 8, 28: 10, 29: 10; every starter fails on `Not implemented`), the learner journey and the agent-factory tests (12). Browser acceptance runs only in CI.
-- CI verified on PR #12 at `6f884be` (review fixes plus a merge of `main` with Lab 06; the following commit changes only this file): CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46077016384 (`verify` and `course`, including engine and browser acceptance for 37 steps) and Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46077016378, both successful. Earlier head `dc0a41d`: CI 46073532766, Agent Factory Review 46073532746.
-- Not covered: real models (all model turns are scripted fakes), MCP over stdio or HTTP, authentication of MCP servers. No Azure resources provisioned.
-
-## Lab 05 production AI (2026-11-27)
-- Implemented on branch `lab-05-production-ai`: course steps 30–37 and module `lab-05-production-ai` in `course/course.json` — tenant isolation and document ACLs (30), PII detection and redaction (31), prompt-injection defences and red-team harness (32), timeouts/retries/circuit breaker/fallback (33), per-user rate limits and token budgets (34), semantic caching with invalidation (35), traces and safe structured logs (36), canary/shadow evaluation and rollback decisions (37). Synthetic financial-services data; no new dependencies.
-- Local evidence (agent session, not CI): `npm run typecheck` clean; `npm run validate` "Valid course: Senior AI Engineer Labs (29 steps)"; `npm test` "Acceptance passed: 29 steps, 58 variants, learner journey through engine 64f1fec" — every Lab 05 starter failed on `Not implemented` and every solution passed (51 tests: 6, 6, 6, 8, 6, 7, 5, 7). `pnpm --filter @labs/agent-factory test` 12 passed; a local factory review of the 65 changed paths reported 0 findings.
-- CI verified on PR #11 (https://github.com/IcodeNet/senior-ai-engineer-labs/pull/11) at `0d81819`: CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073208830 — `verify` passed; `course` passed engine acceptance ("29 steps, 58 variants, learner journey") and browser acceptance ("All 29 lessons open with their title and interview question"). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46073208835: 68 changed paths, 0 findings.
-- Status stays **in progress** until the PR is reviewed and merged; browser acceptance was not run in the agent sandbox (no Chromium), only in CI.
-- Steps 22–29 are reserved for Lab 04 and are not part of this change. No Azure resources provisioned.
-
-### Lab 05 review fixes (2026-11-27)
-- Independent review on PR #11 (separate session, comment https://github.com/IcodeNet/senior-ai-engineer-labs/pull/11#issuecomment-7229062462) requested changes. Fixed: unknown classifications deny (30); semantic-cache hits re-authorize every cited source per user and the key includes clearance, questions stored as hashes, raw PII refused (35); card windows, real overlap and Luhn "subtract 9" tests, HMRC `QQ` NI prefix (31); whole-domain link allowlist, scheme-relative/`www.` links, spaced canary (32); breaker ignores caller 4xx errors, timer-clearing test (33); cost validation and overspend wording (34); HMAC-SHA-256 pseudonyms and card/IBAN masking (36); per-release canary salt and judged-sample gate (37).
-- Local evidence (agent session, not CI): typecheck clean; `npm test` "Acceptance passed: 29 steps, 58 variants"; Lab 05 now has 60 tests (7, 7, 7, 10, 6, 10, 5, 8). All 8 mutations listed in the review, plus 9 more for the new rules, now fail at least one test (each applied to the solution, run, reverted).
-- CI verified on the fix commit `b7b3470`: CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46075565321 — `verify` passed; `course` passed engine acceptance ("29 steps, 58 variants, learner journey") and browser acceptance ("All 29 lessons open with their title and interview question"). Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46075565182: 68 changed paths, 0 findings. The commit after it changes only this file. Status: in progress until re-review and merge.
-- Merged `main` at `1508d49` (Lab 06) into the branch, keeping both labs (no rebase). Local evidence after the merge (agent session, not CI): typecheck clean; `npm run validate` "Valid course: Senior AI Engineer Labs (37 steps)"; `npm test` "Acceptance passed: 37 steps, 74 variants, learner journey through engine 64f1fec"; factory tests 12 passed. CI for the merge commit is on PR #11.
-- Re-review on PR #11 (separate session, https://github.com/IcodeNet/senior-ai-engineer-labs/pull/11#issuecomment-7229448945) confirmed the original findings fixed and found two regressions, now fixed: R1 (33) the breaker counts every error except a real caller 4xx (`isCallerError`), so ten `TypeError("fetch failed")` calls open it; R2 (32) links are parsed with WHATWG `new URL()` (backslash, credentials, non-https and lookalike-suffix tests). Nits: empty user IDs match nothing (30), glued-digit card limitation stated (31), `//` glued to a word is not a link (32), `"forbidden"` returned as a plain miss at the API boundary (35), stale Lab 06 lines corrected. Local evidence (agent session, not CI): typecheck clean; validate 37 steps; `npm test` "Acceptance passed: 37 steps, 74 variants"; Lab 05 has 61 tests; mutants for R1 (old default), R2 (hand-rolled host extraction), credentials check and empty user ID each fail a test. CI for this commit is on PR #11.
-
-## Lab 06 architecture and interview drills (2026-11-27)
-- Implemented on branch `lab-06-architecture-drills`, merged into `main` at `1508d49` via PR #8: course steps 38–45 as module `lab-06-architecture-drills` — capacity and token throughput (38), latency budgets and P95 composition (39), RAG vs fine-tune vs long-context cost models (40), retrieval strategy decision function with reason codes (41), availability/latency/quality SLOs with error budgets and burn-rate paging (42), FMEA scoring with severity override and residual risk (43), model-selection scorecard with hard constraints and weight sensitivity (44), design review for missing controls (45). Each lesson has an interview question and a model answer outline. Deterministic, synthetic data, placeholder prices and limits; no new dependencies; £0.
-- Independent review (separate Claude Code session, workstream D, posted on PR #8): approve with fixes, 6 should-fix and 6 nits. Addressed in a follow-up commit: P95 composition is exact only under perfect correlation and can underestimate (new counterexample test); additive budgets described as a heuristic; reranker check adds search and rerank time; tests pin exact-identifier, multilingual and `<=` boundary rules (the reviewer's style-only and `<` mutants now fail); sensitivity tests cover a weight decrease (increase-only mutant now fails); retrieval always counts as untrusted input in the design review; retention maximum and normalised region comparison added; RPN caveated as ordinal with Action Priority (AIAG-VDA) mentioned; 14.4 burn-rate threshold explained; min-max rank reversal noted; token/request tie-break tested.
-- Local evidence after the fixes (this session, not CI): `npm run typecheck` clean; `npm run validate` → 29 steps; `npm test` → "Acceptance passed: 29 steps, 58 variants, learner journey through engine 64f1fec", every new starter failing all its tests (6, 6, 5, 10, 6, 5, 5, 7 = 50 tests) and every solution passing.
-- CI verified on PR #8 at `990ab76` (last code commit; the following commit changes only this file): CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46075036357 (pull_request) and https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46075028342 (push) passed `verify` and `course` — engine acceptance "29 steps, 58 variants, learner journey", browser acceptance "All 29 lessons open with their title and interview question"; Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46075035843 reviewed 68 changed paths (the full PR diff) with 0 findings.
-- Not verified locally: browser acceptance (no Chromium in the agent sandbox); CI is the gate. Steps 22–29 are reserved for Lab 04; Lab 05 (30–37) is on PR #11.
-- No Azure resources provisioned.
-
-## Lab 03 in Icode: course actions and cost banners (2026-11-28)
-- Implemented on branch `feat/lab03-icode-actions`: engine pin bumped to `c4099e4` (Icode Workshop Stage 1: course actions, typed-confirmation protocol, indicators). `course/course.json` declares six Lab 03 actions (prices, plan, up, status, down, verify), each running an existing `azure:*` npm script, and three cost indicators driven by `course/.azure/` marker files (`env.json`, `resources-may-exist.json`, `cost-status-unknown.json`).
-- `icode/azure.mjs`:
-  - **Confirmations.** Set-up and shutdown ask through the engine protocol line carrying the per-run `ICODE_CONFIRM_TOKEN` (only when `ICODE_ACTION=1`), or a TTY prompt in a terminal. The previous `ICODE_AZURE_CONFIRM` pre-answer variable is removed, and the token is removed from the environment before `az` runs. Threat model, as stated in lesson 17: the learner's machine is trusted. The checks stop accidental and automated pre-answers (piped terminal input; any stdin before the prompt, even with `ICODE_ACTION=1` and a token). They do not stop a local program that deliberately imitates Icode.
-  - **Cost state.** It is recorded before provisioning or deletion, in `course/.azure/` and in a copy outside the checkout (`$XDG_CONFIG_HOME` or `~/.config`, `%APPDATA%` on Windows). The new `azure-cost-watch` sidecar and every command restore "Cost status unknown" if `course/.azure/` is lost.
-  - **Shutdown and verify** act on the recorded subscription and resource group only. Unreadable or subscription-less records, or another signed-in subscription, give "Cost status unknown" and clear nothing; the learner can choose explicitly with `azure:verify -- --subscription <id>`. Verify sweeps every course-tagged group and resource in the subscription, plus soft-deleted accounts, and clears state only if the sweep is empty. Status never clears a banner.
-  - **Prices.** The new read-only `azure:prices` prints Retail Prices API list prices. Its test override (`ICODE_AZURE_PRICES_API`) is honoured only by that command, only with `ICODE_AZURE_LIVE=0` and only on loopback.
-- Lessons 17 and 21 now carry the full guidance (prerequisites and roles, actions with terminal fallbacks, region/model configuration with `az cognitiveservices model list`, cost table from live prices, budget alerts do not cap spend, shutdown scope, leftovers and soft-delete purge); 18–20 notices point to the actions.
-- Tests: `icode/actions.test.mjs` (offline; fake `az` on PATH in a throwaway course copy, prices API pointed at an unreachable address) runs the actions through the pinned engine: action wiring, confirmation protocol including forged lines without the token, banner states, cancel paths, leftovers, wrong subscription, piped input. Browser acceptance opens the Actions tab, runs Plan with `az` signed out, and checks the "Cost status unknown" banner appears and clears. No Azure resources were created; acceptance and browser runs keep `ICODE_AZURE_LIVE=0`.
-- Re-review (https://github.com/IcodeNet/senior-ai-engineer-labs/pull/18#issuecomment-7231335386, head `88cc71e`, CI 46089115139, Agent Factory 46089115189) approved with fixes, now addressed:
-  - N1: one line reader serves every confirmation in a run, so down without a record deletes all of your course groups, asking for each in turn.
-  - N2: tests now pin the untagged-group refusal and the loopback-only and live-off conditions of the prices override.
-  - `--subscription` now states that the sweep covered only that subscription, in the output and in lesson 21.
-  - Tests isolate `APPDATA` as well as `XDG_CONFIG_HOME`.
-- Evidence for the first review round (head `551828f`): CI https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46086341369 and Agent Factory Review https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46086341375 (one `engine-pin-review` reminder). The independent review (https://github.com/IcodeNet/senior-ai-engineer-labs/pull/18#issuecomment-7230882912) requested changes (B1, S1–S4, nits); this entry describes the fixed behaviour, and the CI runs for the fix head are on the PR. Not verified: a live set-up/shutdown on a real subscription, Windows (the fake-`az` engine tests run on Linux/macOS only), and a TTY prompt (covered only by manual use).
+- Release criteria for the course (which modules, which platforms verified).
+- Which Azure subscription, region and budget the live steps use.
 
 ## Update protocol
-After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.
-
-## Course redesign: restructure and Modules 0–2 (2026-11-28)
-- Plan: owner-confirmed redesign around Azure AI Search for apps and agents (Northbank Support throughline; foundation Modules 0–11; Labs 04–06 kept as advanced modules; TypeScript, .NET and FastAPI tracks, TypeScript first). Decisions in [ADR 0005](architecture/0005-azure-ai-search-course-redesign.md); step numbering in [course-step-map.md](course-step-map.md).
-- Tag `v0-labs`: not on origin. The agent's tag push was refused (HTTP 403 from the session's git proxy); the owner will create it at `2ff7c3d` (main before the restructure).
-- Implemented on branch `feat/redesign-foundation-m0-2`:
-  - Removed Labs 01–02 (steps 01–16). Lab 03 (steps 17–21, real Azure, actions, cost banner, teardown) unchanged in place, as Module 3's predecessor; lesson references to removed steps now point at the planned modules.
-  - Labs 04–06 renumbered 22–45 → 71–94 as Advanced A1–A3, content and tests unchanged except step-number references.
-  - New steps, each with concept, theory, 3–5 check questions (fenced `question` YAML, explanations, `source: handoff` where reconstructed from the study handoff), hands-on starter, tests and solution, and Microsoft Learn citations: 01 welcome and readiness check; 02 costs, banner and verify-to-clear rules; 05 why retrieval; 06 analyzers and inverted index; 07 BM25 with a hand-worked example; 10 field attributes and index validator; 11 Northbank schema; 12 simple vs full Lucene syntax and OData governance filters.
-  - Review factory: `course-lesson-template` and `course-check-questions` rules for steps in `module-NN-…` modules, with fixture tests; adds the `yaml` 2.9.1 dependency to parse question blocks.
-  - Course acceptance and browser acceptance accept "Check questions" or "Interview question" and run the learner journey on the first step generically.
-- Azure claims checked against Microsoft Learn on 2026-11-28 (field attributes and REST defaults, vector field rules, naming rules, standard analyzer stopwords, BM25 defaults and score variation, simple and Lucene syntax, OData literals and precedence, tier and billing). Not verified: anything not cited in a lesson.
-- Local evidence (this session, not CI): `npm run typecheck`, `npm run validate` (37 steps), `npm run test:tools` (46 tests), `npm test` with `ICODE_AZURE_LIVE=0` (37 steps, 74 variants: every starter failed on `Not implemented`, every solution passed, learner journey passed), `npm run test:browser` (all 37 lessons open; starter fails and edited playground passes in the UI; Lab 03 actions; cost banner fail-closed; ports released; run inside an isolated network namespace with a preinstalled Chromium), factory tests 20/20 and typecheck.
-- Not done: Modules 3–11; .NET and FastAPI tracks; engine quiz rendering (questions show as YAML until then); No Azure resources provisioned.
-- Review fixes (independent review on PR #20): the docs no longer claim the tag exists; full-Lucene operators (no `&&`/`||`; `|` is not OR in full syntax) and partial-term analysis (match literal tokens; lower-case in the application) are corrected against Learn, with `lowercasePartialTerms` added to step 12; Lab 03 lessons explain the provided pipeline, harness and RRF instead of pointing at unwritten modules; stale step references are fixed; `test:tools` sets its timeout on the command line (vitest 5 ignores `vi.setConfig` in `beforeAll`) and the offline Lab 03 suite is hermetic, with a loopback Retail Prices fake and a guard test; five surviving wrong implementations are now caught; `AGENTS.md` step ranges updated.
+After substantive work, update the tables above to the current state, with evidence (commit, CI run URL). Do not keep a change log here. Never store secrets or personal subscription identifiers.

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Approved, current documents only",
-  "description": "Enforce approval, effective dates, versioning and revocation in the backend before anything reaches the model.",
+  "title": "Costs, setup and shutdown before anything is created",
+  "description": "Estimate what the paid steps cost, decide what the cost banner shows, and prove only a full verify can clear it.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

@@ -1,57 +1,91 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { assessGroundedness, contentTerms, splitSentences } from "./index.ts";
+import { validateIndex, type IndexDefinition } from "./schema.ts";
+import { documentKey, northbankIndex, reviewGovernance, toSearchDocuments, type FaqSource } from "./index.ts";
 
-const sources = [
-  { label: "S1", text: "Economy class is required for flights under six hours." },
-  { label: "S2", text: "Receipts are required for expenses above 25 GBP." },
-];
+const source: FaqSource = {
+  sourceUri: "https://support.northbank.example/faq/overdraft-fees",
+  title: "Overdraft fees",
+  chunks: ["Arranged overdrafts cost 39.9% EAR.", "There is no fee for an unarranged overdraft."],
+  status: "approved",
+  effectiveDate: "2026-02-01",
+  expiryDate: "2026-12-31",
+};
+const byName = (definition: IndexDefinition, name: string) => definition.fields.find((f) => f.name === name)!;
+const findings = (definition: IndexDefinition) => reviewGovernance(definition).map((f) => `${f.field} ${f.rule}`);
 
-test("sentences split on terminal punctuation", () => {
-  assert.deepEqual(splitSentences(" Economy only [S1]. Receipts?  Yes!  "), ["Economy only [S1].", "Receipts?", "Yes!"]);
-  assert.deepEqual(splitSentences("   "), []);
+test("the Northbank index is valid by step 10's rules and passes the governance review", () => {
+  const index = northbankIndex(1536);
+  assert.equal(index.name, "northbank-faq-v1");
+  assert.deepEqual(validateIndex(index), []);
+  assert.deepEqual(reviewGovernance(index), []);
+  assert.deepEqual(index.fields.map((f) => f.name), ["id", "title", "chunk", "sourceUri", "status", "effectiveDate", "expiryDate", "contentVector"]);
 });
 
-test("content terms drop markers and stopwords but keep numbers", () => {
-  assert.deepEqual(contentTerms("Receipts are needed above 25 GBP for you [S2]."), ["receipts", "needed", "above", "25", "gbp"]);
+test("governance fields are filterable and typed for range filters", () => {
+  const index = northbankIndex(1536);
+  assert.equal(byName(index, "status").filterable, true);
+  assert.equal(byName(index, "status").searchable, false, "status is matched exactly, never by full-text search");
+  assert.equal(byName(index, "effectiveDate").type, "Edm.DateTimeOffset");
+  assert.equal(byName(index, "expiryDate").filterable, true);
 });
 
-test("a supported, cited answer passes every check", () => {
-  const result = assessGroundedness("Flights under six hours must be economy class [S1]. Receipts are needed above 25 GBP [S2].", sources);
-  assert.deepEqual(
-    result.sentences.map((s) => [s.supported, s.reason, s.citations]),
-    [
-      [true, undefined, ["S1"]],
-      [true, undefined, ["S2"]],
-    ],
-  );
-  assert.equal(result.citationCoverage, 1);
-  assert.equal(result.supportedRate, 1);
+test("text fields are searchable; chunk is never filterable, sortable or facetable", () => {
+  const chunk = byName(northbankIndex(1536), "chunk");
+  assert.deepEqual([chunk.searchable, chunk.filterable, chunk.sortable, chunk.facetable, chunk.retrievable], [true, false, false, false, true]);
+  assert.equal(byName(northbankIndex(1536), "title").searchable, true);
 });
 
-test("each failure mode is reported with its reason", () => {
-  const result = assessGroundedness(
-    [
-      "Managers approve all upgrades.",
-      "Hotels are capped [S9].",
-      "Receipts are required above 100 GBP [S2].",
-      "Expenses need receipts [S1].",
-      "Economy class applies [S1] [S1].",
-    ].join(" "),
-    sources,
-  );
-  assert.deepEqual(
-    result.sentences.map((s) => s.reason),
-    ["uncited", "unknown-source", "unsupported-number", "low-overlap", undefined],
-  );
-  assert.deepEqual(result.sentences[4].citations, ["S1"]);
-  assert.equal(result.citationCoverage, 4 / 5);
-  assert.equal(result.supportedRate, 1 / 5);
+test("the vector field is a placeholder: right dimensions, not retrievable, with a profile", () => {
+  const vector = byName(northbankIndex(3072), "contentVector");
+  assert.equal(vector.dimensions, 3072);
+  assert.equal(vector.retrievable, false, "raw vectors are not useful in an answer and cost response size");
+  assert.equal(vector.vectorSearchProfile, "northbank-vector-profile");
 });
 
-test("overlap threshold is configurable and empty answers score zero", () => {
-  const sentence = "Expenses above 25 GBP need manager sign-off [S2].";
-  assert.equal(assessGroundedness(sentence, sources, 0.6).sentences[0].reason, "low-overlap");
-  assert.equal(assessGroundedness(sentence, sources, 0.5).sentences[0].supported, true);
-  assert.deepEqual(assessGroundedness("", sources), { sentences: [], citationCoverage: 0, supportedRate: 0 });
+test("documentKey is stable, URL-safe and distinct per chunk", () => {
+  const a = documentKey(source.sourceUri, 0);
+  assert.equal(a, documentKey(source.sourceUri, 0));
+  assert.notEqual(a, documentKey(source.sourceUri, 1));
+  assert.match(a, /^[A-Za-z0-9\-_=]+$/);
+  assert.equal(Buffer.from(a, "base64url").toString("utf8"), `${source.sourceUri}#0`);
+  assert.throws(() => documentKey("", 0), /sourceUri/);
+  assert.throws(() => documentKey(source.sourceUri, -1), /chunkIndex/);
+  assert.throws(() => documentKey("x".repeat(800), 0), /1024/);
+});
+
+test("toSearchDocuments emits one mergeOrUpload document per chunk with DateTimeOffset values", () => {
+  const docs = toSearchDocuments(source);
+  assert.equal(docs.length, 2);
+  assert.deepEqual(docs[1], {
+    "@search.action": "mergeOrUpload",
+    id: documentKey(source.sourceUri, 1),
+    title: "Overdraft fees",
+    chunk: "There is no fee for an unarranged overdraft.",
+    sourceUri: source.sourceUri,
+    status: "approved",
+    effectiveDate: "2026-02-01T00:00:00Z",
+    expiryDate: "2026-12-31T00:00:00Z",
+  });
+  assert.equal(toSearchDocuments({ ...source, expiryDate: undefined })[0].expiryDate, null);
+});
+
+test("toSearchDocuments rejects data that would make governance filters lie", () => {
+  assert.throws(() => toSearchDocuments({ ...source, status: "Approved" as never }), /unknown status/);
+  assert.throws(() => toSearchDocuments({ ...source, effectiveDate: "2026-02-30" }), /real YYYY-MM-DD/);
+  assert.throws(() => toSearchDocuments({ ...source, effectiveDate: "01/02/2026" }), /real YYYY-MM-DD/);
+  assert.throws(() => toSearchDocuments({ ...source, expiryDate: "2026-01-01" }), /before effectiveDate/);
+  assert.throws(() => toSearchDocuments({ ...source, chunks: [] }), /at least one chunk/);
+});
+
+test("reviewGovernance catches the classic schema mistakes", () => {
+  const index = northbankIndex(1536);
+  const change = (name: string, patch: object): IndexDefinition => ({ ...index, fields: index.fields.map((f) => (f.name === name ? { ...f, ...patch } : f)) });
+  assert.deepEqual(findings(change("status", { filterable: false })), ["status governance-filterable"]);
+  assert.deepEqual(findings(change("effectiveDate", { type: "Edm.String", sortable: false })), ["effectiveDate governance-type"]);
+  assert.deepEqual(findings(change("chunk", { filterable: true })), ["chunk chunk-too-long-to-filter"]);
+  assert.deepEqual(findings(change("sourceUri", { retrievable: false })), ["sourceUri citation-retrievable"]);
+  assert.deepEqual(findings(change("title", { facetable: undefined })), ["title explicit-attributes"]);
+  assert.deepEqual(findings({ ...index, fields: index.fields.filter((f) => f.name !== "expiryDate") }), ["expiryDate missing-field"]);
+  assert.deepEqual(findings(change("status", { searchable: true, filterable: true, type: "Edm.Int32" })), ["status schema", "status governance-type"]);
 });

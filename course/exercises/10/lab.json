@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "title": "A retrieval evaluation harness",
-  "description": "Run a retriever over a labelled set, report per-query and mean metrics, and compare K values from a single retrieval pass.",
+  "title": "Field attributes and index definitions",
+  "description": "Model an Azure AI Search index definition and validate its field attributes the way the service does.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",
-  "testArgs": ["--run"]
+  "testArgs": [
+    "--run"
+  ]
 }

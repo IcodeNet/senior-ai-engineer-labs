@@ -3,7 +3,7 @@ import { evaluateRetriever, type Retriever, type Scores } from "./evaluation.ts"
 import type { Mode } from "./retrieval.ts";
 
 export async function compareModes(cases: EvalCase[], retrievers: Record<Mode, Retriever>, k = 5): Promise<Record<Mode, Scores>> {
-  // TODO: evaluate every retrieval mode on the same cases with the step 10 harness.
+  // TODO: evaluate every retrieval mode on the same cases with the provided harness.
   throw new Error("Not implemented: compareModes");
 }
 

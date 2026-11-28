@@ -1,28 +1,103 @@
-# 06 · Grounded prompts, citations and abstention
+# 06 · Tokenizers, analyzers and the inverted index
 
-## Why it matters
-Retrieved text is **untrusted input**. A policy document, a web page or an email can contain "ignore your previous instructions…". Two engineering controls reduce the risk; neither removes it:
+*Module 1 · Search foundations · step 2 of 3 · Track: TypeScript*
 
-1. **Separate channels.** Your rules live in the system message. Retrieved chunks go in the user message, wrapped in delimited blocks, and are described as data to quote, not instructions to follow. Escape the delimiter so a chunk cannot close its own block and smuggle text outside it.
-2. **Evidence gates.** If nothing relevant was retrieved (scores below a threshold), do not call the model at all — abstain. An answer the model has to invent is worse than "I don't know".
+## Concept
 
-Then **verify citations** in the output: every `[S#]` must refer to a source you actually supplied, and an answer that cites nothing is not grounded.
+Full-text search does not scan documents. At indexing time it **analyzes** each searchable field into terms and builds an **inverted index**: for every term, the list of documents (postings) that contain it, with how often and where. A query is analyzed the same way and answered by looking terms up.
 
-## Interview question
-> How would you defend a RAG assistant against indirect prompt injection planted in an indexed document? What can't you prevent with prompting alone?
+```text
+"Freeze your card in the app"
+   │ tokenizer      Freeze | your | card | in | the | app
+   │ token filters  lower-case, (optional) stopwords
+   ▼
+ card ──► [faq-card-lost: tf 1, positions [2]]
+ app  ──► [faq-card-lost: tf 1, positions [5]]
+```
 
-Think about: access control and approval before retrieval (step 02), least-privilege tools, output validation, human review for high-impact actions, and red-team test cases.
+Why a senior engineer cares: "search didn't find it" is almost always an analysis question. The query term and the indexed term were not the same string. Knowing the pipeline lets you debug that in minutes instead of guessing.
 
-## Your task
+## Theory
+
+**Analyzer = tokenizer + token filters** (plus optional character filters before tokenizing). In Azure AI Search every searchable string field has an analyzer; if you specify none, it uses the **standard Lucene analyzer**: the standard tokenizer, a lower-case filter and a stop filter whose **stopword list is empty by default**. Microsoft also offers language analyzers (Lucene and Microsoft natural-language ones, which add stemming or lemmatisation) and custom analyzers.
+
+**Tokenizers decide what a word is.** The standard tokenizer follows Unicode text segmentation, so `ERR-4021` becomes `err` and `4021`, while `northbank's` and `39.9` stay whole. If your users search for product codes with hyphens, the standard analyzer has already split them. That needs a different analyzer, or a separate field with a keyword-style analyzer.
+
+**Same analyzer for indexing and querying**, unless you have a deliberate reason (`indexAnalyzer`/`searchAnalyzer`). If the query is lower-cased and the index is not, nothing matches. Microsoft recommends inspecting tokens with the **Analyze API** when results surprise you. Changing a field's analyzer requires rebuilding the index, so decide during development.
+
+**Postings carry what ranking needs:** document frequency (how many postings a term has), term frequency per document, and **positions**. Positions make phrase queries possible. When a stopword is removed, the remaining tokens keep their original positions, so `"freeze the card"` cannot match "freeze card".
+
+**`searchMode` maps to set operations.** With the default `searchMode=any`, a query for two terms matches documents containing either: a union of postings. With `searchMode=all`, every term must match: an intersection. `any` favours recall; `all` favours precision.
+
+**Partial terms bypass analysis.** Prefix, wildcard, regex and fuzzy terms in a query skip the analyzer and are matched against the literal tokens in the index. Most analyzers lower-case indexed text, so Microsoft's guidance is to lower-case these terms in your application: `Contoso*` can fail to match the token `contoso`. A stemmed index can also miss a wildcard you expected to match (`terminat*` against the stem `termi`). Step 12 returns to this.
+
+**Filterable is not searchable.** A filterable string field is stored verbatim, not word-broken. `$filter=title eq 'card'` does not match "Lost card". Filters are exact; search is analyzed.
+
+## Check questions
+
+```question
+prompt: A Northbank field uses the default analyzer. Is "the" removed from indexed text?
+options:
+  - Yes, the standard analyzer removes English stopwords
+  - No, the standard analyzer's stop filter has an empty stopword list unless you configure one
+  - Only in queries, not in documents
+answer: No, the standard analyzer's stop filter has an empty stopword list unless you configure one
+explanation: >-
+  The standard Lucene analyzer is the standard tokenizer, a lower-case filter and a stop filter, but its stopwords
+  default to an empty list. The separate "stop" analyzer and language analyzers do use stopword lists. Assuming
+  stopwords are dropped leads to wrong expectations about phrase matching and scores.
+```
+
+```question
+prompt: Users search for "ERR-4021" and get results for every error that mentions 4021. Why?
+answer: The standard tokenizer splits on the hyphen, so the query becomes "err" OR "4021" and matches any document with either term.
+explanation: >-
+  With searchMode=any, the two tokens are alternatives. Fixes include searchMode=all, a phrase query, or indexing the
+  code in a separate field with an analyzer that keeps it as one token. Check with the Analyze API rather than guessing.
+```
+
+```question
+prompt: Which part of the inverted index makes the phrase query "lost card" possible?
+answer: The positions stored in each posting.
+explanation: >-
+  Term frequency and document frequency are enough for ranking single terms, but a phrase needs the terms to be
+  adjacent and in order. Positions let the engine check that "card" appears at the position after "lost".
+```
+
+```question
+prompt: Your index uses an English analyzer with stemming, but your query uses a different analyzer with no stemming. What happens to "refunds"?
+answer: The index may store "refund" while the query looks up "refunds", so the document is not found.
+explanation: >-
+  Index and query terms must be produced the same way. That is why Azure uses one analyzer for both unless you set
+  indexAnalyzer and searchAnalyzer deliberately, and why you should test both with the Analyze API.
+```
+
+```question
+prompt: Why does a filter on a string field need an exact value when full-text search does not?
+answer: Filterable strings are stored verbatim and compared exactly; only searchable fields go through the analyzer.
+explanation: >-
+  Microsoft's example: given "sunny day", the filter f eq 'sunny' finds nothing and f eq 'sunny day' matches.
+  Governance values such as status therefore need consistent, exact values, which step 11 enforces when documents are built.
+```
+
+## Hands-on
+
 Implement in `index.ts`:
 
-- `buildGroundedPrompt(question, chunks, { minScore = 0, maxSources = 5 })`
-  - keep chunks with `score >= minScore`, at most `maxSources`, in the given order;
-  - none left → `{ kind: "abstain", reason: "no-evidence" }`;
-  - otherwise return `{ kind: "prompt", system, user, sources }`, where `sources[i]` is `{ label: "S<i+1>", chunkId, title }`;
-  - `system` is the exported `SYSTEM_RULES` and must not contain retrieved text;
-  - `user` contains the question and one `<source id="S1" title="…">…</source>` block per source, with `&`, `<`, `>` and `"` escaped in both the title and the text.
-- `checkCitations(answer, sources)` — find every `[S<n>]` in the answer and return `{ cited, unknown }`: distinct labels in order of first appearance, split by whether a source with that label exists.
+- `tokenize(text)`: runs of Unicode letters and digits, keeping an apostrophe between letters (`northbank's`) and a dot or comma between digits (`39.9`, `1,000`) inside the token. This is a simplified standard tokenizer.
+- `analyze(text, analyzer)`: tokenize, lower-case if configured, remove stopwords (compared lower-cased) and keep each surviving token's **original** position.
+- `buildIndex(docs, analyzer)`: postings per term sorted by document id, each with `tf` and `positions`; `docLength` counts the tokens kept; duplicate ids throw.
+- `matchAny` and `matchAll`: analyze the query with the same analyzer, then take the union or intersection of postings. An empty query matches nothing.
 
-## Going further
-Azure AI Content Safety *Prompt Shields* detects some injection attempts; treat it as an extra signal, not a guarantee. Log the source IDs behind every answer for audit.
+The last test shows that `refunds` does not find `refund`: no stemming here, on purpose.
+
+## Recap and next
+
+Search quality starts with analysis: tokenizer, filters, and the same analyzer on both sides. The inverted index stores terms, frequencies and positions; `any` and `all` are union and intersection. **Next:** step 07 ranks those matches with BM25.
+
+## Further reading
+
+- [Analyzers for text processing](https://learn.microsoft.com/en-us/azure/search/search-analyzers)
+- [Add custom analyzers (built-in analyzers and token filters)](https://learn.microsoft.com/en-us/azure/search/index-add-custom-analyzers)
+- [Full-text search in Azure AI Search (query parsing, lexical analysis, inverted index)](https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture)
+- [Analyze Text (REST API)](https://learn.microsoft.com/en-us/rest/api/searchservice/indexes/analyze)

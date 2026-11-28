@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "title": "Cost and latency accounting",
-  "description": "Turn per-request token and timing records into cost per query, latency percentiles and a budget check.",
-  "runtime": "node",
-  "entry": "index.ts",
-  "testScript": "test",
-  "testArgs": ["--run"]
-}

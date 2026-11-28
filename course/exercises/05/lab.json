@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Hybrid retrieval with Reciprocal Rank Fusion",
-  "description": "Fuse lexical and vector rankings with RRF, the method Azure AI Search uses for hybrid queries.",
+  "title": "Why retrieval for AI",
+  "description": "Show why a model needs retrieval: context budgets, governed candidates and a first naive retriever.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

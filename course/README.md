@@ -1,13 +1,15 @@
-# Senior AI Engineer Labs — Icode Workshop course
+# Senior AI Engineer Labs — Azure AI Search for apps and agents
 
-The interactive course for this repository, run with [Icode Workshop](https://github.com/IcodeNet/Icode-workshop). Each step pairs a short lesson and an interview question with a TypeScript exercise: a failing starter (`problem/`), Vitest tests, and a reference solution (`solution/`).
+The interactive course for this repository, run with [Icode Workshop](https://github.com/IcodeNet/Icode-workshop). It teaches one subject properly: **Azure AI Search** (documented by Microsoft as *Foundry IQ (Azure AI Search)*), and how an app, a React FAQ app and an agent use it. One project runs through it: **Northbank Support**, a governed FAQ knowledge base where only approved, in-date content may ever reach a model.
+
+Every foundation step follows the same template: **Concept**, **Theory**, 3–5 **Check questions** with explained answers, **Hands-on** (a failing starter in `problem/`, Vitest tests and a reference solution in `solution/`) and **Recap and next**. Azure claims are checked against Microsoft Learn and cited in each lesson's Further reading.
 
 ## Prerequisites
 
 - Node.js 22.13 or later (with npm and Corepack)
 - Git
 
-Labs 01, 02, 05 and 06 use no cloud account, API key or paid service. Estimated cost: **£0**. Lab 03 is the exception; see below.
+Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. The real-Azure steps (17–21, Module 3's predecessor) are the exception; see below and step 02.
 
 ## Setup and run
 
@@ -23,59 +25,44 @@ Choose a lesson, read it, edit the **Playground**, then **Run tests**. Compare w
 
 The engine is pinned by commit in `icode/engine.json`. To use a local engine checkout instead, set `ICODE_ENGINE_DIR=/path/to/Icode-workshop`.
 
-## Contents
+## Tracks
 
-| Step | Lesson | You implement |
-|---|---|---|
-| 01 | Chunking with governance metadata | Overlapping word windows carrying approval metadata |
-| 02 | Approved, current documents only | Eligibility, version supersession, re-indexing and revocation |
-| 03 | Lexical retrieval with BM25 | IDF, term-frequency saturation and length normalisation |
-| 04 | Vector retrieval with cosine similarity | Cosine similarity and exhaustive KNN over a toy embedding |
-| 05 | Hybrid retrieval with Reciprocal Rank Fusion | RRF fusion of lexical and vector rankings |
-| 06 | Grounded prompts, citations and abstention | Untrusted-context prompts, escaping, evidence gate, citation checks |
-| 07 | Measuring retrieval | Precision@K, Recall@K, MRR, NDCG@K |
-| 08 | RAG orchestration with defence in depth | Retrieve → re-check eligibility → gate → generate → validate citations |
-| 09 | Labelled evaluation datasets | Dataset validation, leakage checks, deterministic dev/test splits |
-| 10 | A retrieval evaluation harness | Per-query and mean metrics, worst cases, one retrieval pass for many K |
-| 11 | Citation coverage and groundedness checks | Per-sentence citation, source, number and lexical-support checks |
-| 12 | LLM-as-judge with strict parsing | Rubric prompts, strict verdict parsing, bounded retries, position-bias check |
-| 13 | Calibrating the judge against humans | Exact and within-one agreement, Cohen's κ, false-pass rate |
-| 14 | Is it really better? Paired bootstrap comparison | Seeded paired bootstrap confidence intervals and decisions |
-| 15 | Regression gates in CI | Floors, ceilings, tolerances, missing metrics, baseline ratchet |
-| 16 | Cost and latency accounting | Token cost, nearest-rank P50/P95, monthly projection, budget check |
-| 17 | Provision Azure and create a real index | Governed index schema with vector and semantic configuration |
-| 18 | Embed and index documents with Azure OpenAI | Batched embeddings, valid keys, `isLatest`, 207 partial-failure handling |
-| 19 | Keyword, vector, hybrid and semantic search on Azure | Four query modes behind a backend approval filter |
-| 20 | Grounded answers with Azure OpenAI | Chat completions, content-filter handling, step 08 pipeline on real services |
-| 21 | Evaluate on Azure, then shut down | Mode comparison on the labelled set, then teardown and verification |
-| 22 | Tool schemas and argument validation | JSON Schema argument validation, model-actionable errors, tool-definition lint |
-| 23 | The tool-calling loop with step limits | Model → validate → run → feed back, with step, tool-call and repeated-call limits |
-| 24 | Tool errors, retries and idempotency | Error classification, capped backoff with Retry-After, idempotency keys and replay |
-| 25 | Planning vs reactive agents: an explicit state machine | Plan validation, dependency order, pure reducer, bounded replanning |
-| 26 | Human-in-the-loop approval for high-impact tools | Impact policy, approvals bound to exact arguments, four-eyes, expiry, single use, audit |
-| 27 | Building an MCP server: tools, resources and prompts | `McpServer` with tools, a resource template and a prompt, tested over `InMemoryTransport` |
-| 28 | An MCP client: handshake and capability negotiation | Raw JSON-RPC initialize, version check, capability gating, pagination, tool vs protocol errors |
-| 29 | Agent evaluation and prompt injection through tool outputs | Trajectory scoring, tool-use precision/recall, quarantine, injection suite |
-| 30 | Tenant isolation and document ACLs | Deny-by-default tenant, ACL and clearance checks (unknown levels deny); escaped OData security filter; post-filter audit |
-| 31 | PII detection and redaction | Luhn and IBAN mod-97 validation, card windows, overlap resolution, reversible typed placeholders |
-| 32 | Prompt-injection defences and a red-team harness | Injection scanner, quarantine, canary and link-allowlist output checks, attack success rate |
-| 33 | Resilience: timeouts, retries, circuit breaker, fallback | Abortable timeouts, transient-error classification, full-jitter backoff, circuit breaker, degraded fallback |
-| 34 | Rate limits and token budgets per user | Token bucket with `Retry-After`, daily token budgets with reserve and settle |
-| 35 | Semantic caching with invalidation and safety | Scope keys with clearance, per-user re-authorization on hits, hashed questions, PII refusal, TTL, staleness, invalidation |
-| 36 | Observability: traces, token attributes and safe logs | Spans with GenAI token attributes, trace summary, allow-listed structured logs with HMAC pseudonyms and masking |
-| 37 | Release safety: canary, shadow and rollback | Sticky per-release canary, shadow agreement, guardrail-based promote/hold/rollback, rollout stages |
-| 38 | Capacity and token-throughput estimation | Tokens per request, peak TPM/RPM, Little's-law concurrency, deployments by binding limit |
-| 39 | Latency budgets and P95 composition | End-to-end P95 from traces with parallel stages, budget allocation, breach report |
-| 40 | Cost models: RAG vs fine-tuning vs long context | Fixed and variable cost per architecture, ranking by volume, break-even volume |
-| 41 | Choosing a retrieval strategy from requirements | Decision function with reranker, controls and reason codes |
-| 42 | SLOs and error budgets for AI features | Availability, latency and quality SLOs, error budgets, multi-window burn-rate paging |
-| 43 | Failure-mode and effects analysis for an AI pipeline | RPN scoring, severity override, residual risk after mitigations |
-| 44 | Build vs buy and model selection scorecards | Hard constraints, weighted min-max scores, weight sensitivity |
-| 45 | System-design review: find the missing controls | Residency, approval, audit, PII, injection, cost-cap and access-control checks, verdict |
+Concepts, theory and check questions are shared; hands-on code is per track. **TypeScript** (Vitest) is available now. **.NET** and **FastAPI** tracks are planned; they need per-track step IDs in the engine first.
 
-Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps 09–16 are **Lab 02, evaluation engineering (local)**: models, judges and retrievers are deterministic fakes and cost nothing. Steps 17–21 are **Lab 03, real Azure**: the same ideas against real Azure AI Search and Azure OpenAI, with setup and shutdown commands. Steps 22–29 are **Lab 04, agent engineering and MCP (local)**: tools, the agent loop, retries and idempotency, planning, human approval, an MCP server and client, and agent evaluation with prompt-injection cases. Models are scripted fakes and MCP runs over the official SDK's in-memory transport, so it costs nothing and needs no API key. Steps 30–37 are **Lab 05, production AI (local)**: authorization, PII, prompt injection, resilience, rate limits, caching, observability and release safety around the same RAG service, with deterministic fakes for models, clocks and randomness, so it costs nothing. Steps 38–45 are **Lab 06, architecture and interview drills (local)**: each turns a senior design judgement (capacity, latency, cost, retrieval choice, SLOs, FMEA, model selection, design review) into a tested function, and each lesson adds a model answer outline to its interview question; they cost nothing. All teaching happens in this course.
+## Module map
 
-## Lab 03 — real Azure (paid while running)
+Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course-step-map.md`](../docs/course-step-map.md). Until the engine renders quizzes, check questions show as `question` YAML blocks.
+
+| Steps | Module | Status | You build |
+|---|---|---|---|
+| 01–02 | **0 · Welcome** | authored | Course readiness check; cost estimate, cost-banner and verify-to-clear rules |
+| 05–07 | **1 · Search foundations** | authored | Governed naive retrieval under a token budget; tokenizer, analyzer and inverted index; BM25 checked against a hand-worked example |
+| 10–12 | **2 · Index design** | authored | Index-definition validator (attributes, types, vectors, names); the Northbank schema, document keys and governance review; query-parser choice and OData governance filters with schema checking |
+| 17–21 | Lab 03 · Real Azure (Module 3's predecessor) | existing, paid while running | Real index, embeddings, four query modes behind an approval filter, grounded answers, evaluation and shutdown |
+| 17–24 | 3 · Provision and load (live) | planned | Bicep and typed cost confirmation; push loading; indexer, skillset, Blob `jsonArray`; knowledge store theory |
+| 25–29 | 4 · Chunking and embeddings | planned | Chunkers, cosine, vector field, integrated vectorization |
+| 30–35 | 5 · Retrieval modes | planned | Vector, hybrid with RRF, semantic ranker, bake-off |
+| 36–41 | 6 · Governance and security | planned | Server-side filters, security trimming, keyless RBAC, prompt injection in retrieved text |
+| 42–46 | 7 · Evaluation | planned | Precision@5, Recall@5, NDCG, groundedness, held-out sets |
+| 47–52 | 8 · Grounded answers (RAG API) | planned | Answer API with citations and abstention |
+| 53–56 | 9 · React FAQ app | planned | FAQ UI with citations and safe rendering |
+| 57–62 | 10 · Agent | planned | Search as an MCP tool, authorized actions, agentic retrieval |
+| 63–66 | 11 · Operate and finish | planned | Tiers and capacity, shutdown and verify, capstone |
+| 71–78 | **Advanced A1 · Agent engineering and MCP** | existing (was Lab 04, steps 22–29) | Tool schemas, the agent loop, retries and idempotency, planning, human approval, MCP server and client, agent evaluation |
+| 79–86 | **Advanced A2 · Production AI** | existing (was Lab 05, steps 30–37) | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
+| 87–94 | **Advanced A3 · Architecture and interview drills** | existing (was Lab 06, steps 38–45) | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
+
+The advanced modules keep their original lessons (each with an interview question) until they are reworked to the step template. The pre-redesign course (Labs 01–06) is at commit `2ff7c3d` on `main`, to be tagged `v0-labs` by the owner.
+
+## Modules 0–2 — welcome, search foundations and index design (local, free)
+
+**Objective:** understand what the course builds and what it costs before anything exists; build lexical search from the inside (analyzer, inverted index, BM25); design and validate the governed Northbank index and the filters that enforce governance.
+
+- **Setup:** `npm run setup`. **Run and test:** open steps 01–12, or `npm test`. Expected: every starter fails on `Not implemented: <function>`; every solution passes (7–9 tests per step).
+- **Cost:** £0. No cloud resources, API keys or network calls; data is synthetic (`corpus.ts`). Nothing to clean up. Step 02 explains the paid steps' costs and shutdown before they are reached.
+- **Limitations:** the tokenizer is a simplified standard tokenizer; BM25 scores will not equal Azure's `@search.score` (Azure computes per-shard statistics); the index validator and OData checker model a documented subset (common EDM types; no complex types, geography, `any`/`all` or functions). The service remains the authority.
+
+## Lab 03 — real Azure (paid while running; Module 3's predecessor)
 
 Lab 03 creates billable Azure resources. You decide when they exist; `azure:down` removes them all.
 
@@ -107,22 +94,22 @@ Region and models are set in `azure/config.json` (default `swedencentral`). `azu
 
 Each Lab 03 step has **offline tests** (exact REST requests against a fake transport, always run) and **live tests** that run only when `.azure/env.json` exists. Course acceptance and CI never call Azure (`ICODE_AZURE_LIVE=0`).
 
-## Lab 04 — agent engineering and MCP (local, free)
+## Advanced A1 — agent engineering and MCP (local, free; steps 71–78)
 
 **Objective:** build a tool-using expenses assistant the way you would ship one — validated tool calls, a bounded loop, safe retries, explicit control flow, human approval for high-impact actions, MCP on both sides, and an evaluation suite that includes prompt injection through tool outputs.
 
-- **Prerequisites and setup:** the same as Labs 01–02 (`npm run setup`). Lab 04 adds two development dependencies, both pinned exactly in `package.json`: the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` 1.32.2, and `zod` 4.6.7, which steps 27 and 28 import directly for tool schemas (the SDK also depends on it; declaring it avoids relying on a transitive install). The SDK is not small: it adds 93 packages to `package-lock.json` (Express, Hono, Ajv, jose and others for its HTTP transports and auth), although the lab uses only its in-memory transport.
-- **Run and test:** open steps 22–29 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (8–11 tests per step).
+- **Prerequisites and setup:** `npm run setup`. A1 adds two development dependencies, both pinned exactly in `package.json`: the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` 1.32.2, and `zod` 4.6.7, which steps 76 and 77 import directly for tool schemas (the SDK also depends on it; declaring it avoids relying on a transitive install). The SDK is not small: it adds 93 packages to `package-lock.json` (Express, Hono, Ajv, jose and others for its HTTP transports and auth), although the lab uses only its in-memory transport.
+- **Run and test:** open steps 71–78 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (8–11 tests per step).
 - **Cost:** £0. Models are scripted fakes; MCP servers and clients talk over the SDK's `InMemoryTransport` (no process, port or network). No cloud resources are created, so there is nothing to clean up or verify afterwards.
-- **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 29 are a teaching aid that paraphrased attacks will evade; step 28's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
+- **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 78 are a teaching aid that paraphrased attacks will evade; step 77's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
 
-## Lab 05 — production AI (local)
+## Advanced A2 — production AI (local; steps 79–86)
 
 **Objective:** harden a RAG service for production in a regulated firm: enforce access in retrieval, keep PII out of prompts and logs, resist prompt injection and measure it, survive provider failures, share capacity fairly, cache safely, observe every request, and release changes behind metrics-driven rollback.
 
-**Prerequisites:** Labs 01–02 (steps 06, 08, 14–16 are referenced). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
+**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 will teach (until then, see commit `2ff7c3d`, to be tagged `v0-labs`). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
 
-**Run and check:** open steps 30–37 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
+**Run and check:** open steps 79–86 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
 
 **Limitations:** the components are in-memory, single-process teaching implementations. Regex PII detection misses names and addresses, and placeholders can collide with user text that already looks like one; the injection scanner is a bypassable heuristic (the red-team suite shows a case it misses); rate limits and caches would need a shared store across instances; the tracer is a stand-in for OpenTelemetry. No results from real models or traffic are claimed.
 
@@ -140,6 +127,23 @@ npm run test:tools    # Azure setup/shutdown decision logic, offline
 
 ## Authoring a new step
 
-Add `exercises/NN/` with `lab.json`, `README.md` (including an `## Interview question` section), and complete `problem/` and `solution/` projects, each with a `package.json` whose `test` script is `vitest`. Starters must fail with `Not implemented` errors, not setup errors. Add the step to `course.json`; step IDs are two digits and unique across the whole course (at most 100). See the engine's `docs/course-authoring.md`.
+Add `exercises/NN/` using an ID from your module's block in [`docs/course-step-map.md`](../docs/course-step-map.md), with `lab.json`, `README.md` and complete `problem/` and `solution/` projects, each with a `package.json` whose `test` script is `vitest`. Starters must fail with `Not implemented: <function>` errors, not setup errors; only the entry file may differ between `problem/` and `solution/`. Register the step in `course.json` under its `module-NN-…` module; step IDs are two digits and unique across the whole course (at most 100). See the engine's `docs/course-authoring.md`.
+
+A foundation lesson has the sections `## Concept`, `## Theory`, `## Check questions`, `## Hands-on` and `## Recap and next`, in that order, then `## Further reading` with Microsoft Learn links for every Azure claim. Check questions are 3–5 fenced blocks:
+
+````markdown
+```question
+prompt: Is semantic ranking the same as vector search?
+options:
+  - Yes
+  - No, it reranks a candidate set from keyword or hybrid retrieval
+answer: No, it reranks a candidate set from keyword or hybrid retrieval
+explanation: >-
+  Always explain why. Answers must match an option word for word when options are given.
+source: handoff   # only for questions reconstructed from the study handoff
+```
+````
+
+The review factory checks both rules on every pull request.
 
 Tests are practice feedback that learners can read and edit; they are not tamper-resistant grading.

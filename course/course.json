@@ -1,98 +1,84 @@
 {
   "schemaVersion": 1,
-  "title": "Senior AI Engineer Labs",
+  "title": "Senior AI Engineer Labs · Azure AI Search for apps and agents",
   "modules": [
     {
-      "id": "lab-01-azure-ai-search-rag",
-      "title": "Lab 01 \u00b7 Azure AI Search and RAG (local)",
+      "id": "module-00-welcome",
+      "title": "Module 0 · Welcome",
       "exercises": [
         {
-          "id": "indexing",
-          "title": "Indexing and governance",
+          "id": "course-orientation",
+          "title": "What you'll build and how Icode works",
           "steps": [
-            "01",
+            "01"
+          ]
+        },
+        {
+          "id": "cost-safety",
+          "title": "Costs, setup and shutdown",
+          "steps": [
             "02"
-          ]
-        },
-        {
-          "id": "retrieval",
-          "title": "Lexical, vector and hybrid retrieval",
-          "steps": [
-            "03",
-            "04",
-            "05"
-          ]
-        },
-        {
-          "id": "grounding",
-          "title": "Grounded generation",
-          "steps": [
-            "06"
-          ]
-        },
-        {
-          "id": "evaluation",
-          "title": "Retrieval evaluation",
-          "steps": [
-            "07"
-          ]
-        },
-        {
-          "id": "orchestration",
-          "title": "RAG orchestration",
-          "steps": [
-            "08"
           ]
         }
       ]
     },
     {
-      "id": "lab-02-evaluation-engineering",
-      "title": "Lab 02 \u00b7 Evaluation engineering (local)",
+      "id": "module-01-search-foundations",
+      "title": "Module 1 · Search foundations",
       "exercises": [
         {
-          "id": "datasets",
-          "title": "Golden datasets",
+          "id": "why-retrieval",
+          "title": "Why retrieval for AI",
           "steps": [
-            "09"
+            "05"
           ]
         },
         {
-          "id": "retrieval-evals",
-          "title": "Retrieval evaluation",
+          "id": "inverted-index",
+          "title": "Analyzers and the inverted index",
+          "steps": [
+            "06"
+          ]
+        },
+        {
+          "id": "bm25",
+          "title": "BM25 ranking",
+          "steps": [
+            "07"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "module-02-index-design",
+      "title": "Module 2 · Index design",
+      "exercises": [
+        {
+          "id": "field-attributes",
+          "title": "Field attributes",
           "steps": [
             "10"
           ]
         },
         {
-          "id": "generation-evals",
-          "title": "Generation evaluation",
+          "id": "northbank-schema",
+          "title": "The Northbank schema",
           "steps": [
-            "11",
-            "12",
-            "13"
+            "11"
           ]
         },
         {
-          "id": "decisions",
-          "title": "Decisions and gates",
+          "id": "query-syntax",
+          "title": "Query syntax and OData filters",
           "steps": [
-            "14",
-            "15"
-          ]
-        },
-        {
-          "id": "operations",
-          "title": "Cost and latency",
-          "steps": [
-            "16"
+            "12"
           ]
         }
       ]
     },
     {
       "id": "lab-03-real-azure",
-      "title": "Lab 03 \u00b7 Real Azure AI Search and RAG (paid, set up and shut down)",
+      "title": "Lab 03 · Real Azure AI Search and RAG (paid; predecessor of Module 3)",
       "exercises": [
         {
           "id": "azure-indexing",
@@ -126,115 +112,115 @@
       ]
     },
     {
-      "id": "lab-04-agents-mcp",
-      "title": "Lab 04 \u00b7 Agent engineering and MCP (local)",
+      "id": "advanced-a1-agents-mcp",
+      "title": "Advanced A1 · Agent engineering and MCP (local)",
       "exercises": [
         {
           "id": "agent-tools",
           "title": "Tools and the agent loop",
           "steps": [
-            "22",
-            "23",
-            "24"
+            "71",
+            "72",
+            "73"
           ]
         },
         {
           "id": "agent-control",
           "title": "Planning and human approval",
           "steps": [
-            "25",
-            "26"
+            "74",
+            "75"
           ]
         },
         {
           "id": "mcp",
           "title": "Model Context Protocol",
           "steps": [
-            "27",
-            "28"
+            "76",
+            "77"
           ]
         },
         {
           "id": "agent-evaluation",
           "title": "Agent evaluation and prompt injection",
           "steps": [
-            "29"
+            "78"
           ]
         }
       ]
     },
     {
-      "id": "lab-05-production-ai",
-      "title": "Lab 05 \u00b7 Production AI (local)",
+      "id": "advanced-a2-production-ai",
+      "title": "Advanced A2 · Production AI (local)",
       "exercises": [
         {
           "id": "prod-security",
           "title": "Access control, PII and prompt injection",
           "steps": [
-            "30",
-            "31",
-            "32"
+            "79",
+            "80",
+            "81"
           ]
         },
         {
           "id": "prod-reliability",
           "title": "Resilience, limits and caching",
           "steps": [
-            "33",
-            "34",
-            "35"
+            "82",
+            "83",
+            "84"
           ]
         },
         {
           "id": "prod-operations",
           "title": "Observability and release safety",
           "steps": [
-            "36",
-            "37"
+            "85",
+            "86"
           ]
         }
       ]
     },
     {
-      "id": "lab-06-architecture-drills",
-      "title": "Lab 06 \u00b7 Architecture and interview drills (local)",
+      "id": "advanced-a3-architecture-drills",
+      "title": "Advanced A3 · Architecture and interview drills (local)",
       "exercises": [
         {
           "id": "sizing",
           "title": "Capacity, latency and cost",
           "steps": [
-            "38",
-            "39",
-            "40"
+            "87",
+            "88",
+            "89"
           ]
         },
         {
           "id": "retrieval-design",
           "title": "Retrieval design",
           "steps": [
-            "41"
+            "90"
           ]
         },
         {
           "id": "reliability-risk",
           "title": "Reliability and risk",
           "steps": [
-            "42",
-            "43"
+            "91",
+            "92"
           ]
         },
         {
           "id": "selection",
           "title": "Model and vendor selection",
           "steps": [
-            "44"
+            "93"
           ]
         },
         {
           "id": "design-review",
           "title": "Design review",
           "steps": [
-            "45"
+            "94"
           ]
         }
       ]

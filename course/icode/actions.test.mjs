@@ -9,6 +9,7 @@ import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { COST_MARKERS, confirmLine } from "./azure-lib.mjs";
+import "./offline-network.mjs"; // hermetic: no request in this suite leaves the machine (see the guard test at the end)
 
 const course = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const engine = resolve(course, process.env.ICODE_ENGINE_DIR || ".icode/engine");
@@ -69,7 +70,7 @@ if (cmd.startsWith("cognitiveservices account purge")) { w.deleted = w.deleted.f
 err("fake az: unexpected command " + args.join(" "));
 `;
 
-let work, bin, stateFile, root, configHome, durable;
+let work, bin, stateFile, root, configHome, durable, prices, networkLog;
 const state = () => JSON.parse(readFileSync(stateFile, "utf8"));
 const setState = (patch) => writeFileSync(stateFile, JSON.stringify({ ...state(), ...patch }));
 const calls = (prefix) => state().calls.filter((c) => c.args.join(" ").startsWith(prefix));
@@ -121,7 +122,7 @@ function direct(args, { input, answer, env = {} } = {}) {
 }
 const engineEnv = { ICODE_ACTION: "1", ICODE_CONFIRM_TOKEN: TOKEN };
 
-beforeAll(() => {
+beforeAll(async () => {
   work = mkdtempSync(join(tmpdir(), "lab03-actions-"));
   root = join(work, "course");
   bin = join(work, "bin");
@@ -142,13 +143,34 @@ beforeAll(() => {
   process.env.AZURE_CONFIG_DIR = join(work, "no-azure-login"); // even a real az here would be signed out
   process.env.ICODE_AZURE_LIVE = "0";
   delete process.env.ICODE_AZURE_PRICES_API;
-  vi.setConfig({ testTimeout: 60000 });
+  // The timeout is set in the test:tools script (--testTimeout); vitest 5 ignores vi.setConfig in beforeAll.
+  // Every azure.mjs process loads the offline network guard and reads list prices from a loopback fake.
+  prices = createServer((req, res) => {
+    const filter = new URL(req.url, "http://x").searchParams.get("$filter") ?? "";
+    const items = filter.includes("Azure Cognitive Search")
+      ? [{ type: "Consumption", skuName: "Basic", meterName: "Basic Unit", unitOfMeasure: "1 Hour", retailPrice: 0.42, currencyCode: "USD", armRegionName: "swedencentral" }]
+      : [
+          { type: "Consumption", meterName: "gpt 5 mini Inpt Glbl", unitOfMeasure: "1M", retailPrice: 0.25, currencyCode: "USD", armRegionName: "global" },
+          { type: "Consumption", meterName: "text-embedding-3-small-glbl", unitOfMeasure: "1M", retailPrice: 0.02, currencyCode: "USD", armRegionName: "global" },
+        ];
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ Items: items }));
+  });
+  await new Promise((r) => prices.listen(0, "127.0.0.1", r));
+  process.env.ICODE_TEST_PRICES_URL = `http://127.0.0.1:${prices.address().port}/api/retail/prices`;
+  networkLog = join(work, "network.log");
+  writeFileSync(networkLog, "");
+  process.env.ICODE_TEST_NETWORK_LOG = networkLog;
+  process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(join(course, "icode/offline-network.mjs")).href}`.trim();
 });
 afterEach(async () => {
   const running = ops.currentAction(); // never leave an action process behind
   if (running) await ops.cancelAction(running.runId, { graceMs: 200 });
 });
-afterAll(() => rmSync(work, { recursive: true, force: true }));
+afterAll(async () => {
+  await new Promise((r) => prices.close(r));
+  rmSync(work, { recursive: true, force: true });
+});
 beforeEach(() => {
   const config = JSON.parse(readFileSync(join(root, "azure/config.json"), "utf8"));
   const offered = (m) => ({ model: { name: m.name, version: m.version, skus: [{ name: m.sku }] } });
@@ -530,5 +552,27 @@ describe.runIf(posix)("prices override (S4)", () => {
     const plan = await direct("plan", { env: { ICODE_AZURE_PRICES_API: url } });
     expect(plan.output).not.toMatch(/overridden|9\.99/);
     expect(hits).toBe(0);
+  });
+});
+
+describe("offline guard", () => {
+  test("the guard refuses non-loopback requests, in the test worker and in azure.mjs processes", async () => {
+    await expect(fetch("https://example.com/")).rejects.toThrow(/offline test refused/);
+    const child = await new Promise((done) => {
+      const p = spawn(process.execPath, ["-e", "fetch('https://example.com/').then(() => console.log('reached'), (e) => console.log(e.message))"], { env: process.env });
+      let out = "";
+      p.stdout.on("data", (x) => (out += x));
+      p.on("close", () => done(out));
+    });
+    expect(child).toMatch(/offline test refused/);
+    writeFileSync(networkLog, readFileSync(networkLog, "utf8").replace(/^blocked https:\/\/example\.com\n/gm, ""));
+  });
+  test("plan reads list prices through the real Retail Prices URL, served by the loopback fake", async () => {
+    const run = await direct("plan");
+    expect(run.output).toMatch(/0\.42 USD\/hour/);
+    expect(readFileSync(networkLog, "utf8")).toMatch(/rewrote https:\/\/prices\.azure\.com\/api\/retail\/prices/);
+  });
+  test("no test in this suite tried to reach the network", () => {
+    expect(readFileSync(networkLog, "utf8").split("\n").filter((l) => l.startsWith("blocked"))).toEqual([]);
   });
 });

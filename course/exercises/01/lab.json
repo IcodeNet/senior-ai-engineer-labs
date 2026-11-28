@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Chunking with governance metadata",
-  "description": "Split source documents into overlapping chunks that carry the approval metadata retrieval depends on.",
+  "title": "Welcome: what you'll build and how Icode works",
+  "description": "Meet Northbank Support, learn how lessons, tests, actions and the cost banner work, and write the course readiness check.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

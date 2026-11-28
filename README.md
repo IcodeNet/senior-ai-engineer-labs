@@ -1,6 +1,6 @@
 # Senior AI Engineer Labs
 
-Hands-on labs for **senior AI engineers**, taught entirely through an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course. Every step pairs a short lesson and an interview question with a TypeScript exercise: a failing starter, tests, and a reference solution.
+A course for **senior AI engineers** on **Azure AI Search for apps and agents**, taught entirely through an interactive [Icode Workshop](https://github.com/IcodeNet/Icode-workshop) course. One project runs through it, **Northbank Support**, a governed FAQ knowledge base: you design the index, load it, make retrieval good and safe, measure it, then put it behind an API, a React FAQ app and an agent. Every foundation step teaches the concept and theory, checks understanding with explained questions, then proves it hands-on: a failing starter, tests and a reference solution.
 
 The repository contains two things:
 
@@ -11,7 +11,7 @@ The repository contains two things:
 
 ## The course
 
-Runs on your own machine (laptop or desktop). Labs 01, 02, 04, 05 and 06 cost nothing: no cloud account or API key.
+Runs on your own machine (laptop or desktop). Modules 0–2 and the advanced modules cost nothing: no cloud account or API key.
 
 **Prerequisites:** Node.js 22.13 or later, Git.
 
@@ -23,16 +23,20 @@ npm start       # opens the workshop at http://127.0.0.1:5173
 
 Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progress are saved locally; **Reset** restores the starter.
 
-| Lab | Steps | Topics |
+| Module | Steps | Status |
 |---|---|---|
-| 01 · Azure AI Search and RAG | 01–08 | Chunking with metadata, approval and revocation, BM25, vector search, hybrid search with RRF, grounded prompts and citations, retrieval metrics, RAG orchestration |
-| 02 · Evaluation engineering | 09–16 | Labelled datasets, evaluation harness, groundedness checks, LLM-as-judge, judge calibration, paired bootstrap, CI regression gates, cost and latency |
-| 03 · Real Azure (paid while running) | 17–21 | Real Azure AI Search index, Azure OpenAI embeddings, keyword/vector/hybrid/semantic search with approval filters, grounded answers, evaluation, then shutdown |
-| 04 · Agent engineering and MCP | 22–29 | Tool schemas and validation, the tool-calling loop with limits, retries and idempotency, plan-and-execute state machine, human approval gates, an MCP server and a hand-written MCP client, agent evaluation and prompt injection via tool outputs |
-| 05 · Production AI | 30–37 | Tenant isolation and document ACLs, PII redaction, prompt-injection defences and red-teaming, timeouts/retries/circuit breaker/fallback, per-user rate limits and token budgets, safe semantic caching, traces and safe logs, canary/shadow release with rollback |
-| 06 · Architecture and interview drills | 38–45 | Capacity and token throughput, latency budgets and P95 composition, RAG vs fine-tune vs long-context cost, retrieval strategy decisions, SLOs and error budgets, FMEA, model selection scorecards with sensitivity, design review for missing controls |
+| 0 · Welcome: what you'll build, how Icode works, costs and shutdown before anything is created | 01–02 | authored |
+| 1 · Search foundations: why retrieval, analyzers and the inverted index, BM25 | 05–07 | authored |
+| 2 · Index design: field attributes, the Northbank schema, query syntax and OData filters | 10–12 | authored |
+| Lab 03 · Real Azure (paid while running), Module 3's predecessor | 17–21 | existing |
+| 3–11 · Provision and load, chunking and embeddings, retrieval modes, governance, evaluation, RAG API, React FAQ app, agent, operate | 17–66 | planned |
+| Advanced A1 · Agent engineering and MCP (was Lab 04) | 71–78 | existing |
+| Advanced A2 · Production AI (was Lab 05) | 79–86 | existing |
+| Advanced A3 · Architecture and interview drills (was Lab 06) | 87–94 | existing |
 
-Labs 01, 02, 04, 05 and 06 simulate models, judges, search and tools with deterministic fakes (Lab 04 uses the official MCP TypeScript SDK in memory), so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
+**Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md). The previous Labs 01–06 course is at commit `2ff7c3d`; the owner will tag it `v0-labs`.
+
+The local modules use deterministic fakes, so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
 
 ```sh
 npm run azure:plan   # live prices and model checks; creates nothing
@@ -47,7 +51,7 @@ Details, verification commands and the authoring guide: [`course/README.md`](cou
 
 ## The review factory
 
-A deterministic reviewer that runs on every pull request and every push to `main`. It checks changed paths (agent-rule changes, engine pin changes, teaching code outside the course) and the whole course structure (every step registered, nothing stray in a step folder, identical tests in starter and solution, starters that fail on stubs, solutions without stubs, the Vitest runner, an interview question per lesson). It publishes a findings table in the job summary and an `agent-review.json` artifact.
+A deterministic reviewer that runs on every pull request and every push to `main`. It checks changed paths (agent-rule changes, engine pin changes, teaching code outside the course) and the whole course structure (every step registered, nothing stray in a step folder, identical tests in starter and solution, starters that fail on stubs, solutions without stubs, the Vitest runner, the step template with 3–5 valid check questions on foundation lessons, an interview question on the others). It publishes a findings table in the job summary and an `agent-review.json` artifact.
 
 It is **report-only** and **not** an independent or AI reviewer: findings never fail a build until their precision has been measured. Rules and roadmap: [`agent-factory/README.md`](agent-factory/README.md).
 
@@ -67,7 +71,7 @@ pnpm --filter @labs/agent-factory test
 
 ## Status
 
-Labs 01 and 02 are verified in CI. Lab 03 is verified offline in CI (exact Azure requests, setup/shutdown logic, Bicep compilation); its live run against Azure has not yet been verified on a real subscription. Labs 05 (production AI, steps 30–37) and 06 (architecture drills, steps 38–45) are local and deterministic; see the progress log for their CI evidence. Lab 04 (agents and MCP, steps 22–29) is verified in CI on its pull request branch; see its progress entry. Not yet built: real model judging in Lab 02 and live-model agent runs. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+The course is being redesigned ([ADR 0005](docs/architecture/0005-azure-ai-search-course-redesign.md)). Modules 0–2 (TypeScript) are authored on the redesign branch; Modules 3–11 and the .NET and FastAPI tracks are planned. Lab 03 is verified offline in CI; its live run against Azure has not yet been verified on a real subscription. The advanced modules (former Labs 04–06) are local and deterministic, verified in CI. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
 
 ## Rules for contributors and agents
 

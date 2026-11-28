@@ -42,7 +42,8 @@ for (const step of steps) {
   assert.equal(config.testScript, "test", `${step.id} must run its Vitest package script`);
   const readme = await readFile(join(step.base, "README.md"), "utf8");
   assert.match(readme, /^# /, `${step.id} needs a lesson README`);
-  assert.match(readme, /## Interview question/, `${step.id} lesson needs an interview question`);
+  // Foundation lessons use the step template (check questions); advanced and Lab 03 lessons keep an interview question.
+  assert.match(readme, /^## (Interview question|Check questions)$/m, `${step.id} lesson needs check questions or an interview question`);
   for (const variant of ["problem", "solution"]) {
     const workspace = await executionWorkspace(root, step.id, variant);
     try {
@@ -59,7 +60,7 @@ for (const step of steps) {
   }
 }
 
-// Learner journey on step 01: starter fails, an edit passes, reset and restore behave, progress persists.
+// Learner journey on the first step: starter fails, an edit passes, reset and restore behave, progress persists.
 const id = steps[0].id;
 const entry = (await labConfig(root, id)).entry;
 await selectWorkspace(root, id);

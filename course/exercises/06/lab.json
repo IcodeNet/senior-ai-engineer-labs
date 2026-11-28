@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "title": "Grounded prompts, citations and abstention",
-  "description": "Assemble retrieved chunks into a prompt that keeps instructions separate from untrusted content, cites sources and abstains without evidence.",
+  "title": "Tokenizers, analyzers and the inverted index",
+  "description": "Build the analyzer and inverted index that full-text search in Azure AI Search is built on.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",
-  "testArgs": ["--run"]
+  "testArgs": [
+    "--run"
+  ]
 }

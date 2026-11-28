@@ -1,4 +1,4 @@
-// Working harness from step 10. You do not need to change this file.
+// Provided evaluation harness (see the lesson's "What you're given"). You do not need to change this file.
 import { meanOf, ndcgAtK, precisionAtK, recallAtK, reciprocalRank } from "./metrics.ts";
 
 export interface EvalCase {

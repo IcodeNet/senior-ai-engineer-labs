@@ -22,7 +22,9 @@ Course structure rules (`src/course.ts`), checked on the whole `course/` tree in
 | `course-starter` | The starter fails on `Not implemented` stubs and is not identical to the solution |
 | `course-solution` | The reference solution contains no stubs or TODOs |
 | `course-test-runner` | `lab.json` uses `"testScript": "test"` with `["--run"]`, and each variant's `test` script is `vitest` |
-| `course-lesson` | The lesson README has a title and an `## Interview question` section |
+| `course-lesson` | Lessons outside foundation modules (Lab 03, advanced A1–A3) have a title and an `## Interview question` section |
+| `course-lesson-template` | Foundation lessons (steps in `course.json` modules whose id is `module-NN-…`) have a title and the sections `## Concept`, `## Theory`, `## Check questions`, `## Hands-on`, `## Recap and next`, in that order |
+| `course-check-questions` | The `## Check questions` section of a foundation lesson holds 3–5 fenced `question` blocks, each valid YAML with a non-empty `prompt`, `answer` and `explanation`, optional `options` (two or more distinct strings containing the answer word for word) and optional `source: handoff`, and no other keys |
 | `course-step-layout` | A step folder contains only `lab.json`, `README.md`, `problem/` and `solution/` (ignoring `node_modules`), and no dot file or folder anywhere in the step outside `node_modules` (no allowlist: no step on main needs a `.gitkeep`), so stray or hidden copies of a solution are caught |
 
 ## Run locally

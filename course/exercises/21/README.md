@@ -3,9 +3,11 @@
 > **Cost notice.** The live tests in this step call real, billable Azure resources created by the **Set up Azure** action (lesson 17). Azure AI Search Basic is charged for every hour it exists; Azure OpenAI is charged per token. The red cost banner shows while anything may exist. When you finish the lab, run **Shut down Azure** and then **Verify cost is zero** from the Actions tab (lesson 21; terminal: `npm run azure:down`, `npm run azure:verify`). Without Azure set up, the live tests are skipped and the offline tests still check your code.
 
 ## Why it matters
-"Semantic search feels better" is a hypothesis. With the labelled set (step 09) and harness (step 10) you can measure each mode on the same queries against the real service — and then make a decision a reviewer can check.
+"Semantic search feels better" is a hypothesis. With a labelled set and an evaluation harness you can measure each mode on the same queries against the real service — and then make a decision a reviewer can check.
 
-Expect differences such as keyword search winning on `ERR-4021` while vector and semantic win on paraphrased questions. With ten queries, treat differences as indicative, not significant (step 14): a real decision needs a larger labelled set.
+Expect differences such as keyword search winning on `ERR-4021` while vector and semantic win on paraphrased questions. With ten queries, treat differences as indicative, not significant: a real decision needs a larger labelled set.
+
+**What you're given.** `evaluation.ts` is a working harness: it runs each labelled question through a retrieval mode and averages the metrics in `metrics.ts`: Precision@K (the share of the top K that is relevant), Recall@K (the share of all relevant documents found in the top K) and reciprocal rank and NDCG (which reward relevant results near the top). Evaluation is taught in full later in the foundation; here you only run it against Azure.
 
 The final engineering duty is **cleanup**. Azure AI Search Basic keeps charging every hour until it is deleted; stopping your laptop does not stop the bill.
 

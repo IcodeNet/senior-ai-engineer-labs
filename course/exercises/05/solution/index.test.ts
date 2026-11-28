@@ -1,48 +1,57 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { hybridSearch, reciprocalRankFusion } from "./index.ts";
+import { FAQS } from "./corpus.ts";
+import { eligible, estimateTokens, overlapRetrieve, packContext, retrieveForPrompt } from "./index.ts";
 
-const close = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} != ${expected}`);
+const TODAY = "2026-11-28";
+const faq = (id: string) => FAQS.find((f) => f.id === id)!;
 
-test("scores are the sum of 1 / (k + rank) with 1-based ranks", () => {
-  const results = reciprocalRankFusion([["a", "b"], ["b", "c"]]);
-  const score = Object.fromEntries(results.map((r) => [r.id, r.score]));
-  close(score.a, 1 / 61);
-  close(score.b, 1 / 62 + 1 / 61);
-  close(score.c, 1 / 62);
-  assert.deepEqual(results.map((r) => r.id), ["b", "a", "c"]);
+test("estimateTokens is a four-characters-per-token planning estimate, rounded up", () => {
+  assert.equal(estimateTokens(""), 0);
+  assert.equal(estimateTokens("abcd"), 1);
+  assert.equal(estimateTokens("abcde"), 2);
 });
 
-test("consistent agreement beats a single first place", () => {
-  const results = reciprocalRankFusion([
-    ["lexical-only", "both", "x"],
-    ["vector-only", "both", "y"],
-  ]);
-  assert.equal(results[0].id, "both");
+test("only approved answers in force today are eligible", () => {
+  assert.equal(eligible(faq("faq-card-lost"), TODAY), true);
+  assert.equal(eligible(faq("faq-fx-fee-draft"), TODAY), false, "drafts never reach the model");
+  assert.equal(eligible(faq("faq-cheque-retired"), TODAY), false, "retired answers never reach the model");
+  assert.equal(eligible(faq("faq-overdraft-fee-2027"), TODAY), false, "not in force yet");
+  assert.equal(eligible(faq("faq-overdraft-fee"), "2027-01-02"), false, "expired");
+  assert.equal(eligible(faq("faq-overdraft-fee"), "2026-12-31"), true, "the expiry date itself is still in force");
+  assert.equal(eligible(faq("faq-refund-time"), "2026-03-01"), true, "the effective date itself is in force");
 });
 
-test("k controls how much top ranks dominate", () => {
-  const rankings = [["a", "b", "c", "d"], ["d", "c", "b", "a"], ["a", "x", "y", "z"]];
-  assert.equal(reciprocalRankFusion(rankings, { k: 1 })[0].id, "a");
-  const flat = reciprocalRankFusion(rankings, { k: 1000 });
-  assert.ok(flat[0].score - flat[1].score < 0.001);
+test("overlapRetrieve counts distinct query words, highest first, ties by id", () => {
+  const hits = overlapRetrieve("how long does a card refund take", FAQS, 3);
+  assert.equal(hits[0].id, "faq-refund-time");
+  assert.ok(hits.every((h, i) => i === 0 || h.score <= hits[i - 1].score));
+  assert.deepEqual(overlapRetrieve("overdraft overdraft", FAQS, 5).map((h) => h.id), ["faq-overdraft-fee", "faq-overdraft-fee-2027"]);
 });
 
-test("duplicates within one ranking count once, at their best position", () => {
-  const results = reciprocalRankFusion([["a", "b", "a"]]);
-  close(results.find((r) => r.id === "a")!.score, 1 / 61);
+test("a naive word match misses paraphrases: 'money back' finds no refund answer", () => {
+  assert.deepEqual(overlapRetrieve("when do I get my money back", FAQS, 5).filter((h) => h.id === "faq-refund-time"), []);
 });
 
-test("results are capped and ties break by id", () => {
-  const results = reciprocalRankFusion([["d", "c"], ["c", "d"], ["e", "f", "g", "h", "i"]], { top: 3 });
-  assert.deepEqual(results.map((r) => r.id), ["c", "d", "e"]);
-  assert.deepEqual(reciprocalRankFusion([]), []);
+test("packContext fills the budget in rank order and skips passages that do not fit", () => {
+  const ranked = [
+    { id: "a", text: "x".repeat(40) }, // 10 tokens
+    { id: "b", text: "x".repeat(80) }, // 20 tokens: does not fit after a
+    { id: "c", text: "x".repeat(20) }, // 5 tokens
+  ];
+  assert.deepEqual(packContext(ranked, 16), { ids: ["a", "c"], tokens: 15 });
+  assert.deepEqual(packContext(ranked, 9), { ids: ["c"], tokens: 5 });
+  assert.deepEqual(packContext([], 100), { ids: [], tokens: 0 });
 });
 
-test("hybrid search fuses lexical and vector results by order, ignoring raw scores", () => {
-  const lexical = [{ id: "err-4021", score: 9.7 }, { id: "network", score: 2.1 }];
-  const vector = [{ id: "network", score: 0.91 }, { id: "err-4021", score: 0.42 }, { id: "retry", score: 0.4 }];
-  const results = hybridSearch(lexical, vector);
-  assert.deepEqual(results.map((r) => r.id), ["err-4021", "network", "retry"]);
-  close(results[0].score, 1 / 61 + 1 / 62);
+test("the whole corpus does not fit a small budget, so something has to choose", () => {
+  const all = FAQS.map((f) => ({ id: f.id, text: f.text }));
+  assert.ok(packContext(all, 60).ids.length < FAQS.length);
+});
+
+test("retrieveForPrompt filters before retrieving, so a draft can never be selected", () => {
+  const packed = retrieveForPrompt("foreign transaction fee debit cards", FAQS, TODAY, 5, 500);
+  assert.ok(!packed.ids.includes("faq-fx-fee-draft"));
+  const overdraft = retrieveForPrompt("overdraft fees", FAQS, TODAY, 1, 500);
+  assert.deepEqual(overdraft.ids, ["faq-overdraft-fee"], "only the answer in force today can take the slot");
 });

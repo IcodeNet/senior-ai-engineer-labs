@@ -65,7 +65,7 @@ try {
     const { title } = JSON.parse(await readFile(join(root, "exercises", id, "lab.json"), "utf8"));
     await lessons.nth(index).click();
     await until(async () => (await page.locator(".heading h1").textContent()) === title, `step ${id} heading must be "${title}"`);
-    await page.locator(".lesson-panel").getByRole("heading", { name: /^(Interview question|Check questions)\b/ }).waitFor();
+    await page.locator(".lesson-panel").getByRole("heading", { name: /^(Interview question|Check questions)/ }).waitFor();
   }
   evidence.push(`All ${ids.length} lessons open with their title and their check questions or interview question`);
 

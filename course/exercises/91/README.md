@@ -1,7 +1,7 @@
 # 91 · SLOs and error budgets for AI features
 
 ## Why it matters
-An AI feature can be "up" and still useless: it answers fast, with confident, ungrounded text. So an AI service needs the classic **availability** and **latency** SLOs *and* a **quality SLO** measured on a sample of traffic (groundedness, citation validity, judge pass rate — steps 11–13).
+An AI feature can be "up" and still useless: it answers fast, with confident, ungrounded text. So an AI service needs the classic **availability** and **latency** SLOs *and* a **quality SLO** measured on a sample of traffic (groundedness, citation validity, judge pass rate — Module 7).
 
 - An SLO is `good events / eligible events ≥ target` over a window. Define *eligible* carefully: latency is measured on served requests (failures already count against availability); quality on evaluated requests only.
 - The **error budget** is the bad events you may have: `(1 − target) × eligible`. `budgetRemaining = 1 − bad / allowedBad`; below 0 the SLO is breached, near 0 it is at risk and the team slows down risky changes.

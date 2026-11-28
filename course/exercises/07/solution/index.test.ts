@@ -69,3 +69,10 @@ test("on the Northbank FAQ, a rare term decides: 'replacement' finds the lost-ca
   assert.equal(bm25(index, "card", STANDARD, { top: 10 }).length, 2, "'cards' in the draft is a different token");
   assert.equal(bm25(index, "card", STANDARD, { top: 1 }).length, 1);
 });
+
+test("equal scores are ordered by id, so results are stable", () => {
+  const twins = buildIndex([{ id: "b", text: "refund card" }, { id: "a", text: "card refund" }, { id: "c", text: "delay" }], STANDARD);
+  const results = bm25(twins, "refund", STANDARD);
+  assert.equal(results[0].score, results[1].score);
+  assert.deepEqual(results.map((r) => r.id), ["a", "b"]);
+});

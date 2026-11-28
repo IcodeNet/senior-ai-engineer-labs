@@ -34,7 +34,7 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 | Advanced A2 · Production AI (was Lab 05) | 79–86 | existing |
 | Advanced A3 · Architecture and interview drills (was Lab 06) | 87–94 | existing |
 
-**Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md). The previous Labs 01–06 course is preserved at tag `v0-labs`.
+**Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md). The previous Labs 01–06 course is at commit `2ff7c3d`; the owner will tag it `v0-labs`.
 
 The local modules use deterministic fakes, so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
 

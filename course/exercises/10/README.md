@@ -15,7 +15,7 @@ An Azure AI Search **index** is a schema of fields, saved on the service, plus t
 | `retrievable` | return it in results and `$select` | `false` hides it from results but it can still affect ranking, filtering and facets |
 | `key` | identify the document | exactly one, `Edm.String`, must be retrievable |
 
-Why a senior engineer cares: existing field definitions are **locked for the lifetime of the index**. You can add fields, but changing a field's type, attributes or analyzer means a rebuild. Getting attributes right is cheaper than migrating a production index.
+Why a senior engineer cares: existing field definitions are **largely locked for the lifetime of the index**. You can add fields, and a few query-time properties can change in place (`retrievable`, `searchAnalyzer`, synonym maps), but changing a field's name, type, `searchable`, `filterable`, `sortable`, `facetable` or its indexing analyzer means a rebuild. Getting attributes right is cheaper than migrating a production index.
 
 ## Theory
 
@@ -73,7 +73,7 @@ explanation: >-
 
 ```question
 prompt: Production needs a field changed from searchable to filterable only. What is the realistic path?
-answer: Create a new index version with the new definition and reindex into it (or add a new field), then switch the application over.
+answer: Create a new index version with the new definition and reindex into it (or add a new field), then switch the application over, because searchable and filterable cannot change on an existing field.
 explanation: >-
   Existing field definitions are locked for the life of the index. Teams either version the index and cut over, or
   add a new field alongside the old one and remove the obsolete field during a planned rebuild.
@@ -97,5 +97,6 @@ You can explain each attribute, the type rules, the 32 KB limit on filterable st
 - [Search indexes in Azure AI Search (field attributes)](https://learn.microsoft.com/en-us/azure/search/search-what-is-an-index)
 - [Create an index (attributes by data type)](https://learn.microsoft.com/en-us/azure/search/search-how-to-create-search-index)
 - [Create a vector index](https://learn.microsoft.com/en-us/azure/search/vector-search-how-to-create-index)
+- [Update or rebuild an index (changes that need no rebuild)](https://learn.microsoft.com/en-us/azure/search/search-howto-reindex)
 - [Naming rules](https://learn.microsoft.com/en-us/rest/api/searchservice/naming-rules)
 - [Supported data types](https://learn.microsoft.com/en-us/rest/api/searchservice/supported-data-types)

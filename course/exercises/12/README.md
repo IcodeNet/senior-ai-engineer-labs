@@ -24,11 +24,11 @@ Why a senior engineer cares: most "search is broken" tickets are a query sent to
 
 **Simple syntax** supports terms, `"phrases"`, `+` (AND), `|` (OR), `-` (NOT), parentheses and **prefix** search: `chem*` matches "chemical" and "chemistry". It interprets imperfect input gracefully, and words such as AND are just terms. It does not support fuzzy search.
 
-**Full Lucene syntax** adds fielded search (`title:refund`), fuzzy (`refnud~1`), proximity (`"card fee"~3`), term boosting (`refund^3`), regular expressions (`/.*numeric/`), infix and single-character wildcards (`non*al`, `c?rd`), and the text operators AND, OR and NOT (and `&&`, `||`, `!`). Range searches are done with `$filter`, not query syntax.
+**Full Lucene syntax** adds fielded search (`title:refund`), fuzzy (`refnud~1`), proximity (`"card fee"~3`), term boosting (`refund^3`), regular expressions (`/.*numeric/`), infix and single-character wildcards (`non*al`, `c?rd`), and the text operators AND, OR and NOT, written in capitals. The character forms are `+` for AND and `!` or `-` for NOT; there is no character for OR in full syntax (`|` is not supported there, although it is OR in simple syntax). NOT also behaves differently: in full syntax a lone negation such as `-luxury` is not allowed, and negations are always ANDed onto the query. Range searches are done with `$filter`, not query syntax.
 
 **The `chem*` example.** A wildcard query was once written as `{"search": "chem*", "queryType": "full"}`. That is valid, but full syntax is not required: **prefix** matching works in both parsers. You need full syntax for infix or single-character wildcards; suffix matching needs a regular expression. There is no hidden "partial match" switch: partial terms are expressed in query syntax.
 
-**Partial terms are not analyzed and not scored.** Prefix, wildcard, fuzzy and regex terms skip the analyzer (they are only lower-cased), so stemming does not apply to them. They return a uniform score of 1. A prefix of a few characters over a large index can be slow; Microsoft suggests edge n-gram tokenization for heavy type-ahead use.
+**Partial terms are not analyzed and not scored.** Prefix, wildcard, regex and fuzzy terms are passed to the query tree as they are, skipping the analyzer, and are matched against the literal tokens in the index. Because most analyzers lower-case indexed text, `Contoso*` can miss `contoso`: Microsoft's guidance is to lower-case these terms in your application. Regular expressions are lower-case only. Stemming does not apply either, so `terminat*` can miss an index that stemmed the word to `termi`. Wildcard and regex matches are all scored equally (a uniform score of 1). A prefix of a few characters over a large index can be slow; Microsoft suggests edge n-gram tokenization for heavy type-ahead use.
 
 **OData filters.** Comparison operators are `eq`, `ne`, `gt`, `lt`, `ge` and `le`; logical operators are `and`, `or` and `not`. Precedence is `not`, then comparisons, then `and`, then `or`, so `not status eq 'approved'` is an **error**: write `not (status eq 'approved')`. Literals are typed: strings in single quotes, with an embedded quote doubled (`'O''Brien'`); Booleans are `true`/`false`; dates are **unquoted** DateTimeOffset values such as `2026-11-28T00:00:00Z`; `null` tests absence. Collections need `any`/`all`, and functions such as `search.in` exist; this step's subset leaves them out.
 
@@ -96,8 +96,9 @@ explanation: >-
 - `escapeODataString(value)`: quote and double embedded quotes.
 - `governanceFilter(design, asOf)`: for `"status"` or `"approved"`, the approval clause, then `effectiveDate le <asOf>T00:00:00Z and (expiryDate eq null or expiryDate ge <asOf>T00:00:00Z)`. Reject a malformed date.
 - `withGovernance(callerFilter, design, asOf)`: governance alone, or `(governance) and (caller)`.
-- `requiredQueryType(search)`: `"full"` for proximity, regex, AND/OR/NOT/`&&`/`||`/`!`, `field:term`, `~`, `^`, `?` and any `*` that is not at the end of a term; otherwise `"simple"`. Ignore escaped characters and text inside phrases.
-- `validateFilter(filter, fields)`: parse with the precedence above and report `unknown-field`, `not-filterable` and `type-mismatch` problems; any parse error is a single `syntax` problem.
+- `requiredQueryType(search)`: `"full"` for proximity, regex, the text operators AND/OR/NOT, a `!` negation, `field:term`, `~`, `^`, `?` and any `*` that is not at the end of a term; otherwise `"simple"`. Ignore escaped characters and text inside phrases.
+- `lowercasePartialTerms(search)`: lower-case every prefix, wildcard and regex term (outside phrases and escapes), leaving ordinary terms and operators such as AND alone, because those terms bypass the analyzer.
+- `validateFilter(filter, fields)`: parse with the precedence above and report `unknown-field`, `not-filterable` and `type-mismatch` problems; any parse error is a single `syntax` problem. This subset rejects every `not <field> <op> …`, including the valid OData `not IsEnabled eq true` on a Boolean field (which means `(not IsEnabled) eq true`); write it with parentheses instead.
 
 ## Recap and next
 
@@ -105,6 +106,7 @@ You can pick the parser a query needs, explain why `chem*` does not need full sy
 
 ## Further reading
 
+- [Lucene query syntax: Boolean operators, wildcard search and the effect of an analyzer](https://learn.microsoft.com/en-us/azure/search/query-lucene-syntax#boolean-operators)
 - [Simple query syntax](https://learn.microsoft.com/en-us/azure/search/query-simple-syntax)
 - [Lucene query syntax](https://learn.microsoft.com/en-us/azure/search/query-lucene-syntax)
 - [Partial term search and patterns](https://learn.microsoft.com/en-us/azure/search/search-query-partial-matching)

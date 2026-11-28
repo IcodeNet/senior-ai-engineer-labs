@@ -15,7 +15,7 @@ Labs 01–06 (45 steps) jumped between topics, did not open by saying what the c
 4. **Fixed ID blocks per module** ([step map](../course-step-map.md)) so modules can be written in parallel without renumbering.
 5. **Step template** for foundation lessons: Concept, Theory, Check questions (3–5 fenced `question` YAML blocks: `prompt`, optional `options`, `answer`, `explanation`, optional `source: handoff`), Hands-on, Recap and next; plus Further reading citing Microsoft Learn.
 6. **Enforcement:** the review factory checks the template on steps in `module-NN-…` modules; course acceptance and browser acceptance accept "Check questions" or "Interview question".
-7. The pre-redesign course is tagged `v0-labs`.
+7. The pre-redesign course stays at commit `2ff7c3d`. The owner will create the tag `v0-labs` there; the agent could not push tags.
 
 ## Alternatives considered
 
@@ -28,7 +28,7 @@ Labs 01–06 (45 steps) jumped between topics, did not open by saying what the c
 - Learner progress saved under old IDs 22–45 does not carry over to 71–94 (the engine filters unknown IDs).
 - Some advanced lessons reference topics now planned for Modules 4–8 that are not yet written; they point at the module.
 - Lab 02's judge calibration, bootstrap and CI-gate content has no home in the confirmed arc except Module 7; that needs an owner decision when Module 7 is planned.
-- `AGENTS.md` still describes "Lab 01 — steps 01–08"; updating agent rules needs human approval, so it is left for the owner.
+- `AGENTS.md` now describes the step ranges in the new map (a factual update the coordinator approved; no approval rules changed).
 
 ## Follow-up
 

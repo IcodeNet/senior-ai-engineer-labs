@@ -2,7 +2,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import type { Field } from "./schema.ts";
 import { tokenizeFilter } from "./odata.ts";
-import { escapeODataString, governanceFilter, requiredQueryType, validateFilter, withGovernance } from "./index.ts";
+import { escapeODataString, governanceFilter, lowercasePartialTerms, requiredQueryType, validateFilter, withGovernance } from "./index.ts";
 
 const common: Field[] = [
   { name: "id", type: "Edm.String", key: true, searchable: false, filterable: true },
@@ -23,10 +23,22 @@ test("simple syntax covers terms, phrases, + | - operators and prefix search suc
 });
 
 test("full Lucene is needed for infix wildcards, ?, fuzzy, proximity, regex, fielded search, boosts and AND/OR/NOT", () => {
-  for (const search of ["non*al", "c?rd", "refnud~", "refnud~1", '"card fee"~3', "/.*numeric/", "title:refund", "refund^3", "card AND refund", "card && refund"])
+  for (const search of ["non*al", "c?rd", "refnud~", "refnud~1", '"card fee"~3', "/.*numeric/", "title:refund", "refund^3", "card AND refund", "card OR refund", "wifi !luxury"])
     assert.equal(requiredQueryType(search), "full", search);
   assert.equal(requiredQueryType("card\\*s"), "simple", "an escaped operator is just a character");
   assert.equal(requiredQueryType('"title: refund"'), "simple", "a colon inside a phrase is not fielded search");
+  assert.equal(requiredQueryType('"card AND refund"'), "simple", "AND inside a phrase is just a word");
+  assert.equal(requiredQueryType('"non*al"'), "simple", "a star inside a phrase is not a wildcard");
+});
+
+test("partial terms bypass the analyzer, so they are lower-cased in the application", () => {
+  assert.equal(lowercasePartialTerms("Contoso*"), "contoso*");
+  assert.equal(lowercasePartialTerms("Lost CARD*"), "Lost card*", "ordinary terms are left for the analyzer");
+  assert.equal(lowercasePartialTerms("C?RD AND Non*Al"), "c?rd AND non*al", "operators keep their capitals");
+  assert.equal(lowercasePartialTerms("/[MH]otel/"), "/[mh]otel/", "regular expressions are lower-case only");
+  assert.equal(lowercasePartialTerms('"Lost Card*" Refund*'), '"Lost Card*" refund*', "phrases are analyzed, not wildcards");
+  assert.equal(lowercasePartialTerms("Title:Refund*"), "Title:refund*", "field names are case-sensitive");
+  assert.equal(lowercasePartialTerms("ERR\\*Code"), "ERR\\*Code", "an escaped star is not a wildcard");
 });
 
 test("escapeODataString doubles embedded quotes, so user input stays a single literal", () => {

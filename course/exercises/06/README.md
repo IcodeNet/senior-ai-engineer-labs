@@ -29,7 +29,7 @@ Why a senior engineer cares: "search didn't find it" is almost always an analysi
 
 **`searchMode` maps to set operations.** With the default `searchMode=any`, a query for two terms matches documents containing either: a union of postings. With `searchMode=all`, every term must match: an intersection. `any` favours recall; `all` favours precision.
 
-**Partial terms bypass analysis.** Prefix, wildcard, fuzzy and regex terms in a query are not analyzed; Azure only lower-cases them. A stemmed index can therefore miss a wildcard you expected to match. Step 12 returns to this.
+**Partial terms bypass analysis.** Prefix, wildcard, regex and fuzzy terms in a query skip the analyzer and are matched against the literal tokens in the index. Most analyzers lower-case indexed text, so Microsoft's guidance is to lower-case these terms in your application: `Contoso*` can fail to match the token `contoso`. A stemmed index can also miss a wildcard you expected to match (`terminat*` against the stem `termi`). Step 12 returns to this.
 
 **Filterable is not searchable.** A filterable string field is stored verbatim, not word-broken. `$filter=title eq 'card'` does not match "Lost card". Filters are exact; search is analyzed.
 

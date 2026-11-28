@@ -21,7 +21,7 @@
     "azure:down": "node icode/azure.mjs down",
     "azure:verify": "node icode/azure.mjs verify",
     "azure:watch": "node icode/azure.mjs watch",
-    "test:tools": "vitest run --dir icode"
+    "test:tools": "vitest run --dir icode --testTimeout=60000"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -30,7 +30,7 @@ export async function chatComplete(http: Http, env: AzureEnv, prompt: { system: 
   return { text, inputTokens: response.body.usage?.prompt_tokens ?? 0, outputTokens: response.body.usage?.completion_tokens ?? 0 };
 }
 
-/** Map search hits to the candidates the Module 8 pipeline re-checks before prompting. */
+/** Map search hits to the candidates the provided pipeline re-checks before prompting. */
 export function toCandidates(hits: Hit[]): Candidate[] {
   return hits.map((hit) => ({
     id: hit.chunkId,

@@ -13,8 +13,8 @@ export async function chatComplete(http: Http, env: AzureEnv, prompt: { system: 
   throw new Error("Not implemented: chatComplete");
 }
 
-/** Map search hits to the candidates the Module 8 pipeline re-checks before prompting. */
+/** Map search hits to the candidates the provided pipeline re-checks before prompting. */
 export function toCandidates(hits: Hit[]): Candidate[] {
-  // TODO: map hits to the candidates the Module 8 pipeline expects.
+  // TODO: map hits to the candidates the provided pipeline expects.
   throw new Error("Not implemented: toCandidates");
 }

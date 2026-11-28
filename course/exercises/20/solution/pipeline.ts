@@ -1,4 +1,4 @@
-// Working pipeline from Module 8. You do not need to change this file.
+// Provided grounded-answer pipeline (see the lesson's "What you're given"). You do not need to change this file.
 import { buildGroundedPrompt, checkCitations, isEligible, type Source, type Status } from "./support.ts";
 
 export interface Candidate {

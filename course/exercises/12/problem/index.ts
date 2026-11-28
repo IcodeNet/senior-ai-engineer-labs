@@ -30,8 +30,17 @@ export function withGovernance(callerFilter: string | undefined, design: Approva
 
 /** The parser a search string needs. Prefix queries such as chem* work in both; full Lucene is needed for the rest. */
 export function requiredQueryType(search: string): QueryType {
-  // TODO: return 'full' for proximity, regex, AND/OR/NOT/&&/||/!, field:term, ~, ^, ? and any * that is not at the end of a term; otherwise 'simple'. Ignore escaped characters and text inside phrases.
+  // TODO: return 'full' for proximity, regex, AND/OR/NOT, a ! negation, field:term, ~, ^, ? and any * that is not at the end of a term; otherwise 'simple'. Ignore escaped characters and text inside phrases.
   throw new Error("Not implemented: requiredQueryType");
+}
+
+/**
+ * Prefix, wildcard and regex terms skip the analyzer and match the literal (usually lower-case) tokens in the index,
+ * so lower-case them in the application. Phrases, escaped characters, ordinary terms and AND/OR/NOT are left alone.
+ */
+export function lowercasePartialTerms(search: string): string {
+  // TODO: lower-case prefix, wildcard and regex terms (keep any field: prefix); leave phrases, escapes, ordinary terms and operators alone.
+  throw new Error("Not implemented: lowercasePartialTerms");
 }
 
 const LITERALS: Record<string, string[]> = {

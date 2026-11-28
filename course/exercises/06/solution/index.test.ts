@@ -66,3 +66,14 @@ test("exact tokens: an inverted index has no idea that 'refunds' and 'refund' ar
   assert.deepEqual(matchAny(index, "refunds", STANDARD), []);
   assert.deepEqual(matchAny(index, "refund", STANDARD), ["faq-refund-time"]);
 });
+
+test("an analyzer can keep case, and stopwords still match whatever their case", () => {
+  const keepCase = { lowercase: false, stopwords: ["THE"] };
+  assert.deepEqual(analyze("The Card the card", keepCase), [
+    { term: "Card", position: 1 },
+    { term: "card", position: 3 },
+  ]);
+  const index = buildIndex([{ id: "a", text: "Card" }], keepCase);
+  assert.deepEqual(matchAny(index, "card", keepCase), [], "without lower-casing, 'card' and 'Card' are different terms");
+  assert.deepEqual(matchAny(index, "Card", keepCase), ["a"]);
+});

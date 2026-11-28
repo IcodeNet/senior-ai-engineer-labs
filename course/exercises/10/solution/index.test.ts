@@ -66,6 +66,8 @@ test("vector fields: searchable, never filterable, sortable or facetable, with d
   assert.deepEqual(rules(withField({ ...v, filterable: true })), ["fields.v2 vector-attributes"]);
   assert.deepEqual(rules(withField({ ...v, dimensions: undefined })), ["fields.v2 vector-dimensions"]);
   assert.deepEqual(rules(withField({ ...v, dimensions: 1.5 })), ["fields.v2 vector-dimensions"]);
+  assert.deepEqual(rules(withField({ ...v, dimensions: 1 })), ["fields.v2 vector-dimensions"], "the minimum is 2");
+  assert.deepEqual(rules(withField({ ...v, dimensions: 2 })), []);
   assert.deepEqual(rules(withField({ ...v, vectorSearchProfile: "missing" })), ["fields.v2 vector-profile"]);
   assert.deepEqual(rules({ ...withField(v), vectorSearch: { algorithms: [], profiles: vectorSearch.profiles } }), [
     "fields.contentVector vector-profile",

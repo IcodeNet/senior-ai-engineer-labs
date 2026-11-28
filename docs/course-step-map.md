@@ -30,7 +30,7 @@ The foundation reserves 70 IDs for about 33 planned steps; the advanced modules 
 
 ## Old to new
 
-| Old (tag `v0-labs`) | New |
+| Old (commit `2ff7c3d`, to be tagged `v0-labs`) | New |
 |---|---|
 | Lab 01, steps 01–08 | removed; replaced by Modules 1–2 (BM25 now step 07). Its other topics (chunking, vectors, RRF, grounded prompts, metrics, orchestration) are planned in Modules 4–8. |
 | Lab 02, steps 09–16 | removed; its topics (datasets, harness, groundedness, judge, calibration, bootstrap, CI gates, cost) are planned in Modules 7 and 11. |
@@ -39,7 +39,7 @@ The foundation reserves 70 IDs for about 33 planned steps; the advanced modules 
 | Lab 05, steps 30–37 | steps 79–86 (ID + 49) |
 | Lab 06, steps 38–45 | steps 87–94 (ID + 49) |
 
-Cross-references inside the moved lessons were renumbered; references to removed Lab 01–02 lessons now point at the module that will teach the topic. The pre-redesign course is preserved at tag `v0-labs`.
+Cross-references inside the moved lessons were renumbered; references to removed Lab 01–02 lessons now point at the module that will teach the topic. The pre-redesign course is at commit `2ff7c3d`; the owner will create tag `v0-labs` there.
 
 ## Module IDs in `course.json`
 

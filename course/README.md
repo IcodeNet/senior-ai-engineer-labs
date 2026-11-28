@@ -52,7 +52,7 @@ Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course
 | 79–86 | **Advanced A2 · Production AI** | existing (was Lab 05, steps 30–37) | Tenant isolation and ACLs, PII, injection defences, resilience, rate limits, safe caching, observability, release safety |
 | 87–94 | **Advanced A3 · Architecture and interview drills** | existing (was Lab 06, steps 38–45) | Capacity, latency budgets, cost models, retrieval strategy, SLOs, FMEA, model selection, design review |
 
-The advanced modules keep their original lessons (each with an interview question) until they are reworked to the step template. The pre-redesign course (Labs 01–06) is preserved at tag `v0-labs`.
+The advanced modules keep their original lessons (each with an interview question) until they are reworked to the step template. The pre-redesign course (Labs 01–06) is at commit `2ff7c3d` on `main`, to be tagged `v0-labs` by the owner.
 
 ## Modules 0–2 — welcome, search foundations and index design (local, free)
 
@@ -101,13 +101,13 @@ Each Lab 03 step has **offline tests** (exact REST requests against a fake trans
 - **Prerequisites and setup:** `npm run setup`. A1 adds two development dependencies, both pinned exactly in `package.json`: the official MCP TypeScript SDK, `@modelcontextprotocol/sdk` 1.32.2, and `zod` 4.6.7, which steps 76 and 77 import directly for tool schemas (the SDK also depends on it; declaring it avoids relying on a transitive install). The SDK is not small: it adds 93 packages to `package-lock.json` (Express, Hono, Ajv, jose and others for its HTTP transports and auth), although the lab uses only its in-memory transport.
 - **Run and test:** open steps 71–78 in the workshop, or `npm test` for the whole course. Expected: every starter fails on `Not implemented`, every solution passes (8–11 tests per step).
 - **Cost:** £0. Models are scripted fakes; MCP servers and clients talk over the SDK's `InMemoryTransport` (no process, port or network). No cloud resources are created, so there is nothing to clean up or verify afterwards.
-- **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 29 are a teaching aid that paraphrased attacks will evade; step 28's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
+- **Limitations:** no real model is called, so the lab proves the control code around a model, not a model's behaviour; the injection heuristics in step 78 are a teaching aid that paraphrased attacks will evade; step 77's client covers the handshake, capabilities, pagination and tool calls, not notifications, cancellation, sampling or HTTP transports.
 
 ## Advanced A2 — production AI (local; steps 79–86)
 
 **Objective:** harden a RAG service for production in a regulated firm: enforce access in retrieval, keep PII out of prompts and logs, resist prompt injection and measure it, survive provider failures, share capacity fairly, cache safely, observe every request, and release changes behind metrics-driven rollback.
 
-**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 will teach (until then, see tag `v0-labs`). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
+**Prerequisites:** the foundation modules; it references grounded prompts, orchestration and evaluation gates, which Modules 7–8 will teach (until then, see commit `2ff7c3d`, to be tagged `v0-labs`). **Setup:** none beyond `npm run setup`. **Cost:** £0 — no cloud resources, API keys or network calls; models, embeddings, clocks, IDs and randomness are injected fakes, so results are deterministic. Nothing is provisioned, so there is nothing to clean up.
 
 **Run and check:** open steps 79–86 with `npm start`, or run `npm test`; each solution prints its Vitest summary (60 tests across the 8 steps) and each starter fails on `Not implemented`.
 

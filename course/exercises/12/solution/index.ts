@@ -38,7 +38,7 @@ export function requiredQueryType(search: string): QueryType {
   if (/(^|[\s(])\/[^/]*\/(?=$|[\s)])/.test(withoutPhrases)) return "full"; // regular expression
   for (const raw of withoutPhrases.split(/[\s()|+]+/).filter(Boolean)) {
     const term = raw.replace(/^-+/, "");
-    if (/^(AND|OR|NOT)$/.test(term) || term === "&&" || term === "||" || term.startsWith("!")) return "full";
+    if (/^(AND|OR|NOT)$/.test(term) || term.startsWith("!")) return "full"; // text operators; ! is NOT in full syntax
     if (/^[A-Za-z_][\w/]*:/.test(term)) return "full"; // fielded search
     if (/~\d*$/.test(term) || term.includes("^")) return "full"; // fuzzy or term boost
     if (term.includes("?")) return "full"; // single-character wildcard
@@ -46,6 +46,20 @@ export function requiredQueryType(search: string): QueryType {
     if (star !== -1 && star !== term.length - 1) return "full"; // infix or leading wildcard
   }
   return "simple";
+}
+
+/**
+ * Prefix, wildcard and regex terms skip the analyzer and match the literal (usually lower-case) tokens in the index,
+ * so lower-case them in the application. Phrases, escaped characters, ordinary terms and AND/OR/NOT are left alone.
+ */
+export function lowercasePartialTerms(search: string): string {
+  return search.replace(/"[^"]*"|\\.|\/[^/]*\/|[^\s()"]+/g, (token) => {
+    if (token.startsWith('"') || token.startsWith("\\")) return token;
+    if (token.startsWith("/") && token.endsWith("/") && token.length > 1) return token.toLowerCase();
+    if (!/[*?]/.test(token.replace(/\\./g, ""))) return token;
+    const field = /^[A-Za-z_][\w/]*:/.exec(token)?.[0] ?? ""; // field names are case-sensitive: keep them
+    return field + token.slice(field.length).toLowerCase();
+  });
 }
 
 const LITERALS: Record<string, string[]> = {

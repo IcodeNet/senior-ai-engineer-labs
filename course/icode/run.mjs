@@ -29,10 +29,19 @@ if (command === "setup" && !process.env.ICODE_ENGINE_DIR) {
 }
 if (!existsSync(join(engine, "package.json")))
   throw new Error("Run `npm run setup` first, or set ICODE_ENGINE_DIR to an Icode Workshop checkout.");
-if (command === "setup" && !existsSync(join(engine, "node_modules"))) {
-  if (process.platform === "win32") run("cmd.exe", ["/d", "/s", "/c", "corepack pnpm install --frozen-lockfile"], engine);
-  else run("corepack", ["pnpm", "install", "--frozen-lockfile"], engine);
+// Installs the engine's dependencies with the pnpm version the engine declares.
+// Corepack is used when present; Node.js releases without Corepack use npx instead.
+function installEngine() {
+  const declared = JSON.parse(readFileSync(join(engine, "package.json"), "utf8")).packageManager || "pnpm";
+  const pnpm = declared.split("+")[0];
+  const win = process.platform === "win32";
+  const has = (tool) => spawnSync(win ? "cmd.exe" : tool, win ? ["/d", "/s", "/c", `${tool} --version`] : ["--version"], { stdio: "ignore" }).status === 0;
+  const args = has("corepack") ? ["corepack", "pnpm"] : ["npx", "--yes", pnpm];
+  args.push("install", "--frozen-lockfile");
+  if (win) run("cmd.exe", ["/d", "/s", "/c", args.join(" ")], engine);
+  else run(args[0], args.slice(1), engine);
 }
+if (command === "setup" && !existsSync(join(engine, "node_modules"))) installEngine();
 
 const child = spawn(process.execPath, [join(engine, "packages/cli/bin.mjs"), ...process.argv.slice(2), "--content", root], {
   stdio: "inherit",

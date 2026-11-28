@@ -79,15 +79,20 @@ Steps 01–08 are **Lab 01, Azure AI Search and RAG concepts (local)** and steps
 
 Lab 03 creates billable Azure resources. You decide when they exist; `azure:down` removes them all.
 
-**Extra prerequisites:** an Azure subscription where you can create resource groups and role assignments, and the [Azure CLI](https://aka.ms/azure-cli) (`az login`).
+**Extra prerequisites:** an Azure subscription; permission to create resource groups and role assignments in it (Owner, or Contributor plus User Access Administrator); and the [Azure CLI](https://aka.ms/azure-cli), signed in with `az login`. Lesson 17 covers all of it, including region and model configuration.
+
+Run everything from the workshop's **Actions** tab (group **Lab 03 · Real Azure**). Set-up and shutdown ask you to type a confirmation in an Icode dialog. Each action is also an npm script you can run from a terminal in `course/`, where the same confirmation is a prompt; piped input is refused.
 
 ```sh
+npm run azure:prices   # live list prices for the configured region; no sign-in, creates nothing
 npm run azure:plan     # checks your login, model availability and live list prices; creates nothing
 npm run azure:up       # shows what will be created, then requires you to type "create"
 npm run azure:status   # what is running and an estimate of the search cost so far
 npm run azure:down     # deletes the course resource group after you type its name
-npm run azure:verify   # confirms nothing from the course remains
+npm run azure:verify   # confirms nothing from the course remains; only this clears the cost banner
 ```
+
+A red cost banner shows on every lesson while course resources exist or may exist, and **"Cost status unknown"** when a check could not read the subscription. It is driven by marker files in `course/.azure/` (see lesson 17).
 
 | What `azure:up` creates | How it is charged |
 |---|---|
@@ -96,7 +101,7 @@ npm run azure:verify   # confirms nothing from the course remains
 | Azure OpenAI (S0) with an embedding deployment (`text-embedding-3-small`) and a chat deployment (`gpt-5-mini`) | Per token only; the labs use a small number of tokens. |
 | Role assignments for you | Free. API keys are disabled; every call uses your Microsoft Entra ID token. |
 
-Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. `azure:down` refuses to delete a group without that tag, deletes the whole group, purges the soft-deleted Azure OpenAI account and removes `.azure/`; `azure:verify` then checks the subscription for anything left with the course tag. Deleting the resource group is what stops the charges — stopping the workshop or your computer does not. Budget alerts in Azure notify you; they do not stop spending.
+Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. `azure:down` refuses to delete a group without that tag, deletes the whole group, purges the soft-deleted Azure OpenAI account and removes `.azure/env.json`; `azure:verify` then checks the subscription for anything left with the course tag. Deleting the resource group is what stops the charges — stopping the workshop or your computer does not. Budget alerts in Azure notify you; they do not stop spending.
 
 Region and models are set in `azure/config.json` (default `swedencentral`). `azure:plan` refuses models that your region does not offer or that retire within a week; change the config if it does. List prices come from the public Azure Retail Prices API and may differ from your agreement.
 

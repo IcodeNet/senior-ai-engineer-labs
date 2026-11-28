@@ -126,16 +126,18 @@ async function prices(region) {
   }
 }
 async function tokenPrices(model, region) {
+  // contains() is case-sensitive and meter names vary ("text-embedding-3-small-glbl", "GPT 5 Mini Inpt Glbl"), so try the common spellings.
+  const words = model.name.split("-");
+  const spellings = [model.name, words.join(" "), words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "), [words[0].toUpperCase(), ...words.slice(1).map((w) => w[0].toUpperCase() + w.slice(1))].join(" ")];
   const items = [];
-  // contains() is case-sensitive and meter names vary, so search on the last word and filter locally.
-  const last = model.name.split("-").at(-1);
-  for (const name of new Set([model.name, model.name.replaceAll("-", " "), last, last[0].toUpperCase() + last.slice(1)]))
-    for (const field of ["meterName", "productName"]) {
-      try {
-        items.push(...(await retail(`priceType eq 'Consumption' and contains(${field}, '${name}')`)));
-      } catch {}
-    }
-  return modelMeters(items, model.name, region);
+  for (const name of new Set(spellings)) {
+    try {
+      items.push(...(await retail(`priceType eq 'Consumption' and contains(meterName, '${name}')`)));
+    } catch {}
+  }
+  const meters = modelMeters(items, model.name, region);
+  // GlobalStandard deployments bill on the "Glbl" meters; batch and data-zone meters do not apply here.
+  return model.sku === "GlobalStandard" ? meters.filter((m) => /glbl/i.test(m.meter) && !/batch/i.test(m.meter)) : meters;
 }
 
 /** List prices only: no Azure sign-in needed, nothing is read from or created in a subscription. */

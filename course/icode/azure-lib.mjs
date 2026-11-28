@@ -112,7 +112,7 @@ export function modelMeters(items, modelName, region) {
   const inRegion = (r) => !region || ["", "global", region.toLowerCase()].includes((r ?? "").toLowerCase());
   const seen = new Set();
   return items
-    .filter((i) => i.type === "Consumption" && i.retailPrice > 0 && (squash(i.meterName).includes(wanted) || squash(i.productName).includes(wanted)) && inRegion(i.armRegionName))
+    .filter((i) => i.type === "Consumption" && i.retailPrice > 0 && squash(i.meterName).includes(wanted) && inRegion(i.armRegionName))
     .map((i) => ({ meter: i.meterName, unit: i.unitOfMeasure, price: i.retailPrice, currency: i.currencyCode, region: i.armRegionName, product: i.productName }))
     .filter((m) => {
       const key = `${m.meter}|${m.region}|${m.unit}`;

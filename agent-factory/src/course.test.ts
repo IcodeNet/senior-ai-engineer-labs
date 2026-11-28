@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reviewCourse } from './course.js';
+import { questionProblems, reviewCourse } from './course.js';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => rmSync(root, { recursive: true, force: true })));
@@ -24,14 +24,14 @@ function step(overrides: Record<string, string | object | null> = {}) {
   };
   return files;
 }
-function course(steps: Record<string, ReturnType<typeof step>>, listed = Object.keys(steps)) {
+function course(steps: Record<string, ReturnType<typeof step>>, listed = Object.keys(steps), moduleId = 'm') {
   const root = mkdtempSync(join(tmpdir(), 'factory-course-'));
   roots.push(root);
   const write = (path: string, content: string | object) => {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), typeof content === 'string' ? content : JSON.stringify(content));
   };
-  write('course/course.json', { schemaVersion: 1, title: 'C', modules: [{ id: 'm', title: 'M', exercises: [{ id: 'e', title: 'E', steps: listed }] }] });
+  write('course/course.json', { schemaVersion: 1, title: 'C', modules: [{ id: moduleId, title: 'M', exercises: [{ id: 'e', title: 'E', steps: listed }] }] });
   for (const [id, files] of Object.entries(steps))
     for (const [path, content] of Object.entries(files)) if (content !== null) write(`course/exercises/${id}/${path}`, content);
   return root;
@@ -113,6 +113,58 @@ it('flags dot files and folders anywhere in a step, but not inside node_modules'
     'course-step-layout course/exercises/03/.DS_Store',
     'course-step-layout course/exercises/03/.gitkeep',
   ]);
+});
+
+const q = (body: string) => '```question\n' + body + '\n```\n';
+const good = (n: number) => q(`prompt: Question ${n}?\noptions:\n  - Yes\n  - No\nanswer: Yes\nexplanation: Because ${n}.`);
+const lesson = (questions: string, extra = '') =>
+  `# 01 · Lesson\n\n## Concept\nc\n\n## Theory\nt\n\n## Check questions\n\n${questions}\n## Hands-on\nh\n\n## Recap and next\nr\n${extra}`;
+const foundation = (readme: string) => rules(course({ '01': step({ 'README.md': readme }) }, ['01'], 'module-01-search-foundations'));
+
+it('a foundation lesson with the five sections and three valid questions passes, without an interview question', () => {
+  expect(foundation(lesson(good(1) + good(2) + q('prompt: Free text?\nanswer: An answer.\nexplanation: >-\n  Folded\n  text.\nsource: handoff')))).toEqual([]);
+});
+
+it('flags foundation lessons with missing or out-of-order template sections', () => {
+  const three = good(1) + good(2) + good(3);
+  expect(foundation(lesson(three).replace('## Theory', '## Background'))).toEqual(['course-lesson-template course/exercises/01/README.md']);
+  const swapped = lesson(three).replace('## Concept\nc\n\n## Theory\nt', '## Theory\nt\n\n## Concept\nc');
+  expect(foundation(swapped)).toEqual(['course-lesson-template course/exercises/01/README.md']);
+  expect(foundation('# Only a title\n\n## Interview question\n> Why?\n')).toEqual(['course-lesson-template course/exercises/01/README.md']);
+});
+
+it('flags too few or too many valid check questions, and questions outside the section do not count', () => {
+  expect(foundation(lesson(good(1) + good(2)))).toEqual(['course-check-questions course/exercises/01/README.md']);
+  expect(foundation(lesson(good(1) + good(2), `\n## Further reading\n${good(3)}`))).toEqual(['course-check-questions course/exercises/01/README.md']);
+  expect(foundation(lesson([1, 2, 3, 4, 5, 6].map(good).join('')))).toEqual(['course-check-questions course/exercises/01/README.md']);
+});
+
+it('flags each invalid question block, and invalid blocks do not count towards the minimum', () => {
+  const bad = q('prompt: Which?\noptions:\n  - A\n  - B\nanswer: C\nexplanation: x');
+  expect(foundation(lesson(good(1) + good(2) + good(3) + bad))).toEqual(['course-check-questions course/exercises/01/README.md']);
+  expect(foundation(lesson(good(1) + good(2) + bad))).toEqual([
+    'course-check-questions course/exercises/01/README.md',
+    'course-check-questions course/exercises/01/README.md',
+  ]);
+});
+
+it('questionProblems checks the YAML shape of a question', () => {
+  expect(questionProblems('prompt: P?\nanswer: A\nexplanation: E')).toEqual([]);
+  expect(questionProblems('prompt: a: b: c')[0]).toMatch(/not valid YAML/);
+  expect(questionProblems('- a\n- b')).toEqual(['must be a YAML mapping']);
+  expect(questionProblems('prompt: P?\nanswer: A')).toEqual(['needs a non-empty "explanation"']);
+  expect(questionProblems('prompt: P?\nanswer: A\nexplanation: E\nhint: H')).toEqual(['has an unknown key "hint"']);
+  expect(questionProblems('prompt: P?\nanswer: A\nexplanation: E\nsource: chat')).toEqual(['"source" may only be "handoff"']);
+  expect(questionProblems('prompt: P?\noptions: [A]\nanswer: A\nexplanation: E')).toEqual(['"options" must list at least two non-empty strings']);
+  expect(questionProblems('prompt: P?\noptions: [A, A]\nanswer: A\nexplanation: E')).toEqual(['"options" must not repeat']);
+  expect(questionProblems('prompt: P?\noptions: [A, B]\nanswer: a\nexplanation: E')).toEqual(['"answer" must be one of the options, word for word']);
+});
+
+it('steps outside foundation modules are exempt from the template but keep the interview question rule', () => {
+  const root = course({ '71': step({ 'README.md': '# 71 · Advanced\n\n## Why it matters\nx\n\n## Interview question\n> Why?\n' }) }, ['71'], 'advanced-a1-agents-mcp');
+  expect(rules(root)).toEqual([]);
+  const legacy = course({ '17': step({ 'README.md': lesson(good(1)) }) }, ['17'], 'lab-03-real-azure');
+  expect(rules(legacy)).toEqual(['course-lesson course/exercises/17/README.md']);
 });
 
 it('the repository course passes its own structural review', () => {

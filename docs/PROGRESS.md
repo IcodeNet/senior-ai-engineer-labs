@@ -1,6 +1,6 @@
 # Project Progress
 
-Last updated: 2026-11-27
+Last updated: 2026-11-28
 
 ## Mission
 Build an objective-driven, production-minded AI engineering learning platform and portfolio. Each lab connects theory, interview drills, runnable implementations, tests, evaluation and operational considerations.
@@ -13,14 +13,15 @@ Build an objective-driven, production-minded AI engineering learning platform an
 - Use synthetic or publicly approved financial-services examples.
 
 ## Completed
-- [x] Course Lab 01 — Azure AI Search and RAG concepts, steps 01–08 (CI evidence below).
-- [x] Course Lab 02 — Evaluation engineering, steps 09–16 (CI evidence below).
+- [x] Course Lab 01 — Azure AI Search and RAG concepts, steps 01–08 (CI evidence below). Removed by the redesign branch; preserved at tag `v0-labs`.
+- [x] Course Lab 02 — Evaluation engineering, steps 09–16 (CI evidence below). Removed by the redesign branch; preserved at tag `v0-labs`.
 - [x] Review factory runs on every pull request and push to `main`, with course structure rules (CI evidence below).
 - [x] Repository reduced to the course and the review factory (entry dated 2026-11-27, restructure).
 - [ ] Course Lab 03 — real Azure, steps 17–21: implemented and verified offline; live run on a real subscription not yet verified.
 - [ ] Course Lab 06 — architecture and interview drills, steps 38–45: merged into `main` at `1508d49` via PR #8 (see entry dated 2026-11-27, Lab 06).
 
 ## In progress
+- [ ] Course redesign, Azure AI Search for apps and agents ([ADR 0005](architecture/0005-azure-ai-search-course-redesign.md)): restructure plus Modules 0–2 (TypeScript) implemented on branch `feat/redesign-foundation-m0-2`; not merged (entry dated 2026-11-28, redesign). Modules 3–11, the quiz block in the engine, and the .NET and FastAPI tracks are planned.
 - [ ] Course Lab 04 — agent engineering and MCP, steps 22–29: implemented on branch `lab-04-agents-mcp` (PR #12), review findings addressed; not yet merged (entry dated 2026-11-27, Lab 04).
 - [ ] Course Lab 05 — production AI, steps 30–37: implemented, CI verified on PR #11, independent review changes addressed; not merged (entry dated 2026-11-27, Lab 05).
 - [ ] Course release readiness: real-environment check on a learner's machine (Windows/macOS), and a decision on whether cloud steps belong in the first release.
@@ -125,3 +126,16 @@ Foundation files are present on origin. CI run https://github.com/IcodeNet/senio
 
 ## Update protocol
 After substantive work, record the date, completed work with evidence, next tasks, blockers, decisions and any cloud resources left running. Never store secrets or personal subscription identifiers here.
+
+## Course redesign: restructure and Modules 0–2 (2026-11-28)
+- Plan: owner-confirmed redesign around Azure AI Search for apps and agents (Northbank Support throughline; foundation Modules 0–11; Labs 04–06 kept as advanced modules; TypeScript, .NET and FastAPI tracks, TypeScript first). Decisions in [ADR 0005](architecture/0005-azure-ai-search-course-redesign.md); step numbering in [course-step-map.md](course-step-map.md).
+- Tag `v0-labs` created at `2ff7c3d` (main before the restructure); see the PR for whether it reached origin.
+- Implemented on branch `feat/redesign-foundation-m0-2`:
+  - Removed Labs 01–02 (steps 01–16). Lab 03 (steps 17–21, real Azure, actions, cost banner, teardown) unchanged in place, as Module 3's predecessor; lesson references to removed steps now point at the planned modules.
+  - Labs 04–06 renumbered 22–45 → 71–94 as Advanced A1–A3, content and tests unchanged except step-number references.
+  - New steps, each with concept, theory, 3–5 check questions (fenced `question` YAML, explanations, `source: handoff` where reconstructed from the study handoff), hands-on starter, tests and solution, and Microsoft Learn citations: 01 welcome and readiness check; 02 costs, banner and verify-to-clear rules; 05 why retrieval; 06 analyzers and inverted index; 07 BM25 with a hand-worked example; 10 field attributes and index validator; 11 Northbank schema; 12 simple vs full Lucene syntax and OData governance filters.
+  - Review factory: `course-lesson-template` and `course-check-questions` rules for steps in `module-NN-…` modules, with fixture tests; adds the `yaml` 2.9.1 dependency to parse question blocks.
+  - Course acceptance and browser acceptance accept "Check questions" or "Interview question" and run the learner journey on the first step generically.
+- Azure claims checked against Microsoft Learn on 2026-11-28 (field attributes and REST defaults, vector field rules, naming rules, standard analyzer stopwords, BM25 defaults and score variation, simple and Lucene syntax, OData literals and precedence, tier and billing). Not verified: anything not cited in a lesson.
+- Local evidence (this session, not CI): `npm run typecheck`, `npm run validate` (37 steps), `npm run test:tools` (46 tests), `npm test` with `ICODE_AZURE_LIVE=0` (37 steps, 74 variants: every starter failed on `Not implemented`, every solution passed, learner journey passed), `npm run test:browser` (all 37 lessons open; starter fails and edited playground passes in the UI; Lab 03 actions; cost banner fail-closed; ports released; run inside an isolated network namespace with a preinstalled Chromium), factory tests 20/20 and typecheck.
+- Not done: Modules 3–11; .NET and FastAPI tracks; engine quiz rendering (questions show as YAML until then); `AGENTS.md` still describes Lab 01 as steps 01–08 (agent-rule changes need human approval). No Azure resources provisioned.

@@ -65,12 +65,16 @@ try {
     const { title } = JSON.parse(await readFile(join(root, "exercises", id, "lab.json"), "utf8"));
     await lessons.nth(index).click();
     await until(async () => (await page.locator(".heading h1").textContent()) === title, `step ${id} heading must be "${title}"`);
-    await page.locator(".lesson-panel").getByRole("heading", { name: "Interview question" }).waitFor();
+    await page.locator(".lesson-panel").getByRole("heading", { name: /^(Interview question|Check questions)$/ }).waitFor();
   }
-  evidence.push(`All ${ids.length} lessons open with their title and interview question`);
+  evidence.push(`All ${ids.length} lessons open with their title and their check questions or interview question`);
 
+  // The learner journey runs on the first step of the course.
+  const first = ids[0];
+  const firstLab = JSON.parse(await readFile(join(root, "exercises", first, "lab.json"), "utf8"));
+  const firstSolution = await readFile(join(root, "exercises", first, "solution", firstLab.entry), "utf8");
   await lessons.first().click();
-  await until(async () => (await page.locator(".heading h1").textContent()) === "Chunking with governance metadata", "step 01 must reopen");
+  await until(async () => (await page.locator(".heading h1").textContent()) === firstLab.title, `step ${first} must reopen`);
   const status = page.locator('pre.notice[role="status"]').first();
   const runTests = page.getByRole("button", { name: "Run tests", exact: true });
   await until(() => runTests.isEnabled(), "Run tests must become available");
@@ -85,10 +89,10 @@ try {
     await page.getByRole("tab", { name: "Playground", exact: true }).click();
     await page.waitForTimeout(300);
   }
-  await until(async () => (await editor.inputValue()).includes("Not implemented: chunkDocument"), "editor must show the starter index.ts");
-  await editor.fill(await readFile(join(root, "exercises/01/solution/index.ts"), "utf8"));
+  await until(async () => (await editor.inputValue()).includes("Not implemented: "), `editor must show the starter ${firstLab.entry}`);
+  await editor.fill(firstSolution);
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await until(async () => (await readFile(join(root, ".workshop/playgrounds/01/index.ts"), "utf8")).includes("chunks.push"), "save must write the playground file");
+  await until(async () => (await readFile(join(root, ".workshop/playgrounds", first, firstLab.entry), "utf8").catch(() => "Not implemented")).includes("Not implemented") === false, "save must write the playground file");
   await runTests.click();
   await until(async () => !/^FAIL/.test((await status.textContent()) ?? ""), "the second run must replace the earlier output");
   await until(async () => /^(PASS|FAIL)/.test((await status.textContent()) ?? ""), "tests must finish again in the browser");

@@ -1,58 +1,76 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { chunkDocument, tokenize, type SourceDocument } from "./index.ts";
+import { atLeast, parseVersion, readiness, summary, type Facts } from "./index.ts";
 
-const doc = (text: string): SourceDocument => ({
-  id: "policy-7",
-  title: "Expense policy",
-  text,
-  status: "approved",
-  version: 3,
-  effectiveDate: "2026-01-01",
+const PIN = "c4099e4f2e43805cd1cc1797960fbb72bc006bd3";
+const healthy: Facts = {
+  node: "v22.13.0",
+  npm: "10.9.2",
+  git: "git version 2.47.1",
+  engineCommit: PIN,
+  pinnedCommit: PIN,
+  azureCli: "2.67.0",
+  azureMarkers: [],
+};
+const status = (facts: Facts, id: string) => readiness(facts).checks.find((c) => c.id === id)?.status;
+
+test("parseVersion reads node, npm and git version strings", () => {
+  assert.deepEqual(parseVersion("v22.13.0"), [22, 13, 0]);
+  assert.deepEqual(parseVersion("git version 2.47.1"), [2, 47, 1]);
+  assert.deepEqual(parseVersion("24.1"), [24, 1, 0]);
+  assert.throws(() => parseVersion("not installed"), /Not a version/);
 });
 
-test("tokenize splits on any whitespace without empty tokens", () => {
-  assert.deepEqual(tokenize("  claims\tover\n500  GBP "), ["claims", "over", "500", "GBP"]);
-  assert.deepEqual(tokenize("   "), []);
+test("atLeast compares numerically, not as text", () => {
+  assert.equal(atLeast([22, 13, 0], [22, 13, 0]), true);
+  assert.equal(atLeast([22, 9, 9], [22, 13, 0]), false, "9 < 13 even though '9' > '1' as text");
+  assert.equal(atLeast([23, 0, 0], [22, 13, 0]), true);
 });
 
-test("windows overlap and stop at the end of the document", () => {
-  const chunks = chunkDocument(doc("w0 w1 w2 w3 w4 w5 w6 w7 w8 w9"), { size: 4, overlap: 2 });
-  assert.deepEqual(
-    chunks.map((c) => c.text),
-    ["w0 w1 w2 w3", "w2 w3 w4 w5", "w4 w5 w6 w7", "w6 w7 w8 w9"],
-  );
+test("a healthy machine is ready, not billable, and every check passes", () => {
+  const report = readiness(healthy);
+  assert.equal(report.ready, true);
+  assert.equal(report.billable, false);
+  assert.deepEqual(report.checks.map((c) => c.id), ["node", "npm", "git", "engine", "azure-cli", "cost"]);
+  assert.ok(report.checks.every((c) => c.status === "pass"));
 });
 
-test("a short final window is kept when it adds new words", () => {
-  const chunks = chunkDocument(doc("a b c d e f g"), { size: 3, overlap: 0 });
-  assert.deepEqual(chunks.map((c) => c.text), ["a b c", "d e f", "g"]);
+test("an old Node.js, missing npm or missing git fail the check", () => {
+  assert.equal(status({ ...healthy, node: "v22.12.0" }, "node"), "fail");
+  assert.equal(status({ ...healthy, node: "" }, "node"), "fail");
+  assert.equal(status({ ...healthy, npm: null }, "npm"), "fail");
+  assert.equal(status({ ...healthy, git: null }, "git"), "fail");
+  assert.equal(readiness({ ...healthy, git: null }).ready, false);
 });
 
-test("every chunk carries id, index and governance metadata", () => {
-  const chunks = chunkDocument(doc("one two three four five"), { size: 3, overlap: 1 });
-  assert.equal(chunks.length, 2);
-  chunks.forEach((chunk, index) => {
-    assert.equal(chunk.id, `policy-7#${index}`);
-    assert.equal(chunk.chunkIndex, index);
-    assert.equal(chunk.docId, "policy-7");
-    assert.equal(chunk.title, "Expense policy");
-    assert.equal(chunk.status, "approved");
-    assert.equal(chunk.version, 3);
-    assert.equal(chunk.effectiveDate, "2026-01-01");
-  });
+test("a missing engine fails and points at setup; a different engine only warns", () => {
+  const missing = readiness({ ...healthy, engineCommit: null }).checks.find((c) => c.id === "engine");
+  assert.equal(missing?.status, "fail");
+  assert.match(missing?.message ?? "", /npm run setup/);
+  assert.equal(status({ ...healthy, engineCommit: "0123456789abcdef" }, "engine"), "warn");
 });
 
-test("an empty document produces no chunks", () => {
-  assert.deepEqual(chunkDocument(doc(" \n "), { size: 5, overlap: 1 }), []);
+test("no Azure CLI is a warning, because the offline modules do not need it", () => {
+  const report = readiness({ ...healthy, azureCli: null });
+  assert.equal(status({ ...healthy, azureCli: null }, "azure-cli"), "warn");
+  assert.equal(report.ready, true);
 });
 
-test("invalid size or overlap is rejected", () => {
-  for (const options of [
-    { size: 0, overlap: 0 },
-    { size: 2.5, overlap: 0 },
-    { size: 4, overlap: 4 },
-    { size: 4, overlap: -1 },
-  ])
-    assert.throws(() => chunkDocument(doc("a b c"), options), RangeError);
+test("any cost marker makes the report billable and names the shutdown actions", () => {
+  for (const marker of ["env.json", "resources-may-exist.json", "cost-status-unknown.json"]) {
+    const report = readiness({ ...healthy, azureMarkers: [marker] });
+    assert.equal(report.billable, true, marker);
+    const cost = report.checks.find((c) => c.id === "cost");
+    assert.equal(cost?.status, "warn");
+    assert.match(cost?.message ?? "", /Shut down Azure[\s\S]*Verify cost is zero/);
+  }
+  assert.equal(readiness({ ...healthy, azureMarkers: ["notes.txt"] }).billable, false, "unrelated files are not markers");
+});
+
+test("summary prints one line per check and a verdict", () => {
+  const text = summary(readiness({ ...healthy, npm: null }));
+  assert.equal(text.split("\n").length, 7);
+  assert.match(text, /^✔ node: Node\.js 22\.13\.0$/m);
+  assert.match(text, /^✖ npm: /m);
+  assert.match(text, /Not ready/);
 });

@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "title": "LLM-as-judge with strict parsing",
-  "description": "Grade answers with a model judge that must return valid structured verdicts, retry safely and detect position bias.",
+  "title": "Query syntax: simple, full Lucene and OData filters",
+  "description": "Choose the right query parser, build governance filters safely and check filters against the schema.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",
-  "testArgs": ["--run"]
+  "testArgs": [
+    "--run"
+  ]
 }

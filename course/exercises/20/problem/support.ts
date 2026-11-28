@@ -1,4 +1,4 @@
-// Working helpers from steps 02 and 06. You do not need to change this file.
+// Working helpers carried over from the earlier governance and grounded-prompt lessons. You do not need to change this file.
 export type Status = "draft" | "approved" | "revoked";
 
 export function isEligible(chunk: { status: Status; effectiveDate: string }, now: Date): boolean {

@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "title": "Measuring retrieval: Precision, Recall, MRR and NDCG",
-  "description": "Implement the retrieval metrics used to compare chunking, BM25, vector and hybrid configurations on a labelled set.",
+  "title": "BM25 ranking, by hand and in code",
+  "description": "Implement BM25 over your inverted index and check it against a hand-worked example.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",
-  "testArgs": ["--run"]
+  "testArgs": [
+    "--run"
+  ]
 }

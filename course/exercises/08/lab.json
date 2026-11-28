@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "title": "RAG orchestration with defence in depth",
-  "description": "Combine retrieval, backend eligibility checks, grounded prompting and citation validation into one answer pipeline.",
-  "runtime": "node",
-  "entry": "index.ts",
-  "testScript": "test",
-  "testArgs": ["--run"]
-}

@@ -9,7 +9,7 @@ One index, four query strategies:
 |---|---|---|
 | keyword | `search` (BM25) | exact terms, codes such as ERR-4021 |
 | vector | `vectorQueries` | meaning and paraphrase |
-| hybrid | both | the service fuses them with RRF (step 05) |
+| hybrid | both | the service fuses them with RRF (Module 5) |
 | semantic | hybrid + `queryType: semantic` | a cross-encoder reranks the fused top results |
 
 Whatever the mode, the backend adds the **approval filter** built from its own clock — never from user input — so drafts, superseded versions and revoked documents cannot be retrieved. Semantic reranking returns `@search.rerankerScore` (0–4), which replaces the fused score for ordering. The semantic ranker here runs on its **free plan**: when the monthly allowance is used up, semantic queries return an error rather than a bill.

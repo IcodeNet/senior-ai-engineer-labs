@@ -1,4 +1,4 @@
-// Working metrics from step 07. You do not need to change this file.
+// Working metrics from Module 7. You do not need to change this file.
 function checkK(k: number): void {
   if (!Number.isInteger(k) || k <= 0) throw new RangeError("k must be a positive integer");
 }

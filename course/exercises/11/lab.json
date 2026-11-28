@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "title": "Citation coverage and groundedness checks",
-  "description": "Check every sentence of a generated answer for citations, valid sources, supported numbers and lexical support.",
+  "title": "The Northbank Support schema",
+  "description": "Design the governed Northbank index: chunk, title, source, status, effective date and a vector placeholder.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",
-  "testArgs": ["--run"]
+  "testArgs": [
+    "--run"
+  ]
 }

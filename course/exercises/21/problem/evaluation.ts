@@ -1,4 +1,4 @@
-// Working harness from step 10. You do not need to change this file.
+// Working harness from Module 7. You do not need to change this file.
 import { meanOf, ndcgAtK, precisionAtK, recallAtK, reciprocalRank } from "./metrics.ts";
 
 export interface EvalCase {

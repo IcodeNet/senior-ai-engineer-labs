@@ -1,77 +1,70 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { ChunkStore, currentChunks, isEligible, type Chunk } from "./index.ts";
+import { bannerFor, canClearBanner, confirmed, estimate, hoursWithinBudget, type Rates, type VerifyResult } from "./index.ts";
 
-const now = new Date("2026-11-27T12:00:00Z");
-const chunk = (over: Partial<Chunk>): Chunk => ({
-  id: "travel#0",
-  docId: "travel",
-  text: "Book economy for flights under six hours.",
-  status: "approved",
-  version: 1,
-  effectiveDate: "2026-01-01",
-  ...over,
-});
-const ids = (chunks: Chunk[]) => chunks.map((c) => c.id).sort();
+// Illustrative rates for the arithmetic only. They are not current prices: `npm run azure:plan` shows live list prices.
+const rates: Rates = { currency: "USD", searchUnitHour: 0.1, inputPerMillion: 0.25, outputPerMillion: 2 };
+const clean: VerifyResult = {
+  sweptSubscription: "sub-a",
+  recordedSubscription: "sub-a",
+  groups: 0,
+  resources: 0,
+  softDeleted: 0,
+  errors: false,
+};
 
-test("only approved chunks that are already effective are eligible", () => {
-  assert.equal(isEligible(chunk({}), now), true);
-  assert.equal(isEligible(chunk({ effectiveDate: "2026-11-27T12:00:00Z" }), now), true);
-  assert.equal(isEligible(chunk({ status: "draft" }), now), false);
-  assert.equal(isEligible(chunk({ status: "revoked" }), now), false);
-  assert.equal(isEligible(chunk({ effectiveDate: "2027-01-01" }), now), false);
+test("search cost is units × hours × rate, whether or not you query it", () => {
+  const idle = estimate({ searchUnits: 1, hours: 8, inputTokens: 0, outputTokens: 0 }, rates);
+  assert.deepEqual(idle, { currency: "USD", search: 0.8, tokens: 0, total: 0.8 });
+  assert.equal(estimate({ searchUnits: 2, hours: 8, inputTokens: 0, outputTokens: 0 }, rates).search, 1.6);
 });
 
-test("a newer approved version supersedes the older one", () => {
-  const result = currentChunks(
-    [
-      chunk({ id: "travel@1#0", version: 1 }),
-      chunk({ id: "travel@1#1", version: 1 }),
-      chunk({ id: "travel@2#0", version: 2 }),
-    ],
-    now,
-  );
-  assert.deepEqual(ids(result), ["travel@2#0"]);
+test("token cost is per million, priced separately for input and output", () => {
+  const result = estimate({ searchUnits: 1, hours: 2, inputTokens: 200_000, outputTokens: 150_000 }, rates);
+  assert.equal(result.tokens, 0.35); // 0.05 for input + 0.30 for output
+  assert.equal(result.total, 0.55);
 });
 
-test("an unpublished newer version leaves the approved version authoritative", () => {
-  const result = currentChunks(
-    [
-      chunk({ id: "travel@1#0", version: 1 }),
-      chunk({ id: "travel@2#0", version: 2, status: "draft" }),
-      chunk({ id: "travel@3#0", version: 3, effectiveDate: "2027-03-01" }),
-    ],
-    now,
-  );
-  assert.deepEqual(ids(result), ["travel@1#0"]);
+test("forgetting to shut down dominates the bill", () => {
+  const weekend = estimate({ searchUnits: 1, hours: 64, inputTokens: 100_000, outputTokens: 150_000 }, rates);
+  assert.ok(weekend.search > 10 * weekend.tokens);
 });
 
-test("versions are resolved per document", () => {
-  const result = currentChunks(
-    [chunk({ id: "travel#0", version: 4 }), chunk({ id: "expenses#0", docId: "expenses", version: 1 })],
-    now,
-  );
-  assert.deepEqual(ids(result), ["expenses#0", "travel#0"]);
+test("estimate rejects negative or non-numeric plans", () => {
+  assert.throws(() => estimate({ searchUnits: 1, hours: -1, inputTokens: 0, outputTokens: 0 }, rates), /hours/);
+  assert.throws(() => estimate({ searchUnits: Number.NaN, hours: 1, inputTokens: 0, outputTokens: 0 }, rates), /searchUnits/);
 });
 
-test("re-indexing a document replaces its previous chunks", () => {
-  const store = new ChunkStore();
-  store.upsert([chunk({ id: "travel#0" }), chunk({ id: "travel#1" }), chunk({ id: "gifts#0", docId: "gifts" })]);
-  store.upsert([chunk({ id: "travel#0", text: "Book economy for all flights.", version: 2 })]);
-  const result = store.eligible(now);
-  assert.deepEqual(ids(result), ["gifts#0", "travel#0"]);
-  assert.equal(result.find((c) => c.docId === "travel")?.text, "Book economy for all flights.");
+test("hoursWithinBudget rounds down to whole hours", () => {
+  assert.equal(hoursWithinBudget(5, 1, rates), 50);
+  assert.equal(hoursWithinBudget(0.99, 1, rates), 9);
+  assert.throws(() => hoursWithinBudget(5, 0, rates), /positive/);
 });
 
-test("revocation removes every chunk of the document", () => {
-  const store = new ChunkStore();
-  store.upsert([chunk({ id: "travel#0" }), chunk({ id: "travel#1" }), chunk({ id: "gifts#0", docId: "gifts" })]);
-  store.revoke("travel");
-  assert.deepEqual(ids(store.eligible(now)), ["gifts#0"]);
+test("the banner shows the least certain state", () => {
+  assert.deepEqual(bannerFor([]), { level: "none" });
+  assert.deepEqual(bannerFor(["env.json"]), { level: "danger", reason: "exists" });
+  assert.deepEqual(bannerFor(["env.json", "resources-may-exist.json"]), { level: "danger", reason: "may-exist" });
+  assert.deepEqual(bannerFor(["env.json", "cost-status-unknown.json", "resources-may-exist.json"]), { level: "danger", reason: "unknown" });
+  assert.deepEqual(bannerFor(["README.md"]), { level: "none" });
 });
 
-test("drafts in the store are never returned", () => {
-  const store = new ChunkStore();
-  store.upsert([chunk({ id: "draft#0", docId: "draft", status: "draft" })]);
-  assert.deepEqual(store.eligible(now), []);
+test("only a clean, error-free sweep of the recorded subscription clears the banner", () => {
+  assert.equal(canClearBanner(clean), true);
+  assert.equal(canClearBanner({ ...clean, softDeleted: 1 }), false, "a soft-deleted account can still block names and hold quota");
+  assert.equal(canClearBanner({ ...clean, resources: 1 }), false);
+  assert.equal(canClearBanner({ ...clean, groups: 1 }), false);
+  assert.equal(canClearBanner({ ...clean, errors: true }), false, "a failed list is not an empty list");
+  assert.equal(canClearBanner({ ...clean, sweptSubscription: "sub-b" }), false, "a clean sweep of another subscription proves nothing");
+  assert.equal(canClearBanner({ ...clean, recordedSubscription: null }), false);
+});
+
+test("typed confirmations match exactly", () => {
+  assert.equal(confirmed("create", "create"), true);
+  assert.equal(confirmed("create", "create\n"), true);
+  assert.equal(confirmed("create", "Create"), false);
+  assert.equal(confirmed("create", " create"), false);
+  assert.equal(confirmed("create", "y"), false);
+  assert.equal(confirmed("rg-saiel-course", "rg-saiel-course\r\n"), true);
+  assert.throws(() => confirmed("", ""), /empty/);
 });

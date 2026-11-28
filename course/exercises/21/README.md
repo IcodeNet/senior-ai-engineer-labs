@@ -3,9 +3,9 @@
 > **Cost notice.** The live tests in this step call real, billable Azure resources created by the **Set up Azure** action (lesson 17). Azure AI Search Basic is charged for every hour it exists; Azure OpenAI is charged per token. The red cost banner shows while anything may exist. When you finish the lab, run **Shut down Azure** and then **Verify cost is zero** from the Actions tab (lesson 21; terminal: `npm run azure:down`, `npm run azure:verify`). Without Azure set up, the live tests are skipped and the offline tests still check your code.
 
 ## Why it matters
-"Semantic search feels better" is a hypothesis. With the labelled set (step 09) and harness (step 10) you can measure each mode on the same queries against the real service — and then make a decision a reviewer can check.
+"Semantic search feels better" is a hypothesis. With a labelled set and an evaluation harness (Module 7) you can measure each mode on the same queries against the real service — and then make a decision a reviewer can check.
 
-Expect differences such as keyword search winning on `ERR-4021` while vector and semantic win on paraphrased questions. With ten queries, treat differences as indicative, not significant (step 14): a real decision needs a larger labelled set.
+Expect differences such as keyword search winning on `ERR-4021` while vector and semantic win on paraphrased questions. With ten queries, treat differences as indicative, not significant (Module 7): a real decision needs a larger labelled set.
 
 The final engineering duty is **cleanup**. Azure AI Search Basic keeps charging every hour until it is deleted; stopping your laptop does not stop the bill.
 

@@ -36,7 +36,7 @@ When the live test has passed and you have read the results, open the **Actions*
 
    Only when all of these are empty does it print `✔ Verified: no course resources remain … This course incurs no further charges there.` Only then does it clear the cost banner and the record kept outside the course folder (lesson 17).
 
-Shutdown, too, uses the recorded resource group. Without any record (for example after deleting `course/.azure/` on a new machine), it finds the course-tagged groups whose `owner` tag is you, and asks you to type each name. It never deletes another owner's group.
+Shutdown, too, uses the recorded resource group. Without any record (for example after deleting `course/.azure/` on a new machine), it finds the course-tagged groups whose `owner` tag is you. It asks you to type each name in turn, and deletes each one in the same run. If you cancel one, the groups not yet deleted stay and so does the banner. It never deletes another owner's group.
 
 Together these remove **every paid resource** the course created: nothing billable lives outside the resource group. Cancelling the dialog deletes nothing, and charges continue.
 
@@ -72,6 +72,8 @@ If Verify reports **Cost status unknown** instead, it could not check, and it ne
   ```
 
   It must be the signed-in subscription. Verify sweeps it by the course tag as above, and clears the banner only if the sweep is empty there.
+
+  **This sweep covers only the subscription you name.** If it is empty, the banner and the records are cleared, even if your resources are in a different subscription. If you are not sure which subscription you used, sign in to each one in turn and run Verify there. Clear the banner only when you have checked them all.
 
 The banner never clears on a failed check, and **Azure status and cost so far** never clears it.
 

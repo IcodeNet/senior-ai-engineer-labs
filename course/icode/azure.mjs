@@ -53,13 +53,32 @@ const durableFile = join(stateHome, "icode-workshop", `${config.courseTag}-azure
 const channel = confirmChannel({ action: process.env.ICODE_ACTION, token: process.env.ICODE_CONFIRM_TOKEN, isTTY: Boolean(process.stdin.isTTY) });
 const token = process.env.ICODE_CONFIRM_TOKEN;
 delete process.env.ICODE_CONFIRM_TOKEN;
-// Anything on stdin before the question is asked is a pre-answer and makes the confirmation fail.
-let bytesBeforePrompt = 0;
-let promptShown = false;
-if (channel === "icode" && ["up", "down"].includes(command))
-  process.stdin.on("data", (chunk) => {
-    if (!promptShown) bytesBeforePrompt += chunk.length;
+// One line reader for every confirmation in a run (shutdown may ask once per resource group). Anything that reaches
+// stdin while no question is pending is a pre-answer and makes the next confirmation fail.
+let bytesUnasked = 0;
+let pending = null; // resolve function of the question being asked
+let stdinClosed = false;
+const queued = [];
+let lines;
+if (channel !== "none" && ["up", "down"].includes(command)) {
+  if (channel === "icode")
+    process.stdin.on("data", (chunk) => {
+      if (!pending) bytesUnasked += chunk.length;
+    });
+  lines = createInterface({ input: process.stdin });
+  lines.on("line", (line) => {
+    if (pending) {
+      const done = pending;
+      pending = null;
+      done(line);
+    } else queued.push(line);
   });
+  lines.on("close", () => {
+    stdinClosed = true;
+    if (pending) pending("");
+    pending = null;
+  });
+}
 // Commands that check Azure state record "cost status unknown" when the check fails.
 let recordUnknownOnFailure = false;
 let knownTarget = {};
@@ -142,19 +161,13 @@ async function ask(expected, message) {
   if (channel === "none") cancel("✖ A typed confirmation is required and cannot be piped. Run this from the Icode Workshop Actions tab or an interactive terminal. Nothing was changed.");
   // Let any input already waiting on stdin arrive (the event loop is blocked while az runs) before deciding.
   if (channel === "icode") await new Promise((done) => setTimeout(done, 250));
-  if (preAnswered({ bytesBeforePrompt }))
-    cancel("✖ Input arrived before the confirmation was asked for, so it is not a confirmation. Confirm in the Icode dialog when it opens. Nothing was changed.");
-  promptShown = true;
+  if (channel === "icode" && (preAnswered({ bytesBeforePrompt: bytesUnasked }) || queued.length))
+    cancel("✖ Input arrived before the confirmation was asked for, so it is not a confirmation. Confirm in the Icode dialog when it opens. Nothing more was changed.");
+  if (channel === "terminal") queued.length = 0; // type-ahead in a terminal is discarded, never used as an answer
   if (channel === "icode") console.log(confirmLine(token, expected, message));
   else process.stdout.write(`\n${message}\nType ${expected} to continue (anything else cancels): `);
-  const rl = createInterface({ input: process.stdin });
-  const answer = await new Promise((done) => {
-    rl.once("line", done);
-    rl.once("close", () => done(""));
-  });
-  rl.close();
-  process.stdin.destroy(); // the engine keeps stdin open; let the process exit
-  return answer;
+  if (stdinClosed) return "";
+  return new Promise((done) => (pending = done));
 }
 
 function context() {
@@ -333,6 +346,11 @@ function verify() {
     process.exit(1);
   }
   if (t.anyState || t.recorded) clearAllState();
+  if (explicitSubscription !== undefined)
+    console.log(
+      `This sweep covered only subscription ${ctx.account.id}, the one you named. If you are not sure which subscription you used for Lab 03, ` +
+        `run Verify in each of them: the banner was cleared on the evidence of this subscription alone.`,
+    );
   console.log(`✔ Verified: no course resources remain in subscription ${ctx.account.name} (${ctx.account.id}). This course incurs no further charges there.`);
 }
 
@@ -395,4 +413,7 @@ const commands = { prices: showPrices, plan, up, status, down, verify, watch };
 if (!commands[command]) fail("Usage: node icode/azure.mjs prices|plan|up|status|down|verify [--subscription <id>]|watch");
 if (command !== "watch" && restoreLostState()) console.error("! course/.azure was missing while Lab 03 resources may exist; the banner now shows “Cost status unknown” until Verify passes.");
 await commands[command]();
-if (command !== "watch") process.stdin.destroy();
+if (command !== "watch") {
+  lines?.close();
+  process.stdin.destroy(); // the engine keeps stdin open; let the process exit
+}

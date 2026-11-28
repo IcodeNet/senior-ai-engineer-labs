@@ -16,7 +16,7 @@ const root = new URL("..", import.meta.url).pathname;
 const azureConfig = await mkdtemp(join(tmpdir(), "icode-no-azure-"));
 const configHome = await mkdtemp(join(tmpdir(), "icode-config-"));
 const outsideRecord = join(configHome, "icode-workshop", "senior-ai-engineer-labs-azure.json");
-const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0", AZURE_CONFIG_DIR: azureConfig, XDG_CONFIG_HOME: configHome } });
+const child = spawn(process.execPath, ["icode/run.mjs", "start"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ICODE_AZURE_LIVE: "0", AZURE_CONFIG_DIR: azureConfig, XDG_CONFIG_HOME: configHome, APPDATA: configHome } });
 const closed = once(child, "close");
 let logs = "";
 for (const stream of [child.stdout, child.stderr]) stream.on("data", (x) => (logs = (logs + x).slice(-8000)));

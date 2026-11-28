@@ -134,10 +134,11 @@ beforeAll(() => {
   chmodSync(join(bin, "az"), 0o755);
   stateFile = join(work, "az-state.json");
   configHome = join(work, "config");
-  durable = join(configHome, "icode-workshop", "senior-ai-engineer-labs-azure.json");
+  durable = join(configHome, "icode-workshop", "senior-ai-engineer-labs-azure.json"); // same path for XDG_CONFIG_HOME and APPDATA
   process.env.FAKE_AZ_STATE = stateFile;
   process.env.PATH = bin + delimiter + process.env.PATH;
-  process.env.XDG_CONFIG_HOME = configHome; // the record outside the checkout goes here, not to the real ~/.config
+  process.env.XDG_CONFIG_HOME = configHome; // the record outside the checkout goes here, not to the real ~/.config…
+  process.env.APPDATA = configHome; // …or the real %APPDATA% on Windows
   process.env.AZURE_CONFIG_DIR = join(work, "no-azure-login"); // even a real az here would be signed out
   process.env.ICODE_AZURE_LIVE = "0";
   delete process.env.ICODE_AZURE_PRICES_API;
@@ -358,6 +359,7 @@ describe.runIf(posix)("verify fails closed when the recorded subscription is unc
 
     const chosen = await direct(["verify", "--subscription", SUB]);
     expect(chosen.code, chosen.output).toBe(0);
+    expect(chosen.output).toMatch(new RegExp(`This sweep covered only subscription ${SUB}[\\s\\S]*run Verify in each of them`));
     expect(calls("group list --tag")).not.toEqual([]);
     expect(calls("resource list --tag")).not.toEqual([]);
     expect(calls("cognitiveservices account list-deleted")).not.toEqual([]);
@@ -404,6 +406,40 @@ describe.runIf(posix)("recorded resource group and lost state (S2, S3)", () => {
     expect(run.confirms.map((c) => c.expected)).toEqual([group]); // never another owner's group
     expect(groupsIn(SUB)).toEqual(["rg-saiel-course-bbbbbb"]);
     expect(run.output).toMatch(/another learner/); // verify still reports the other group
+  });
+
+  test("with no record and two owned course groups, down asks for and deletes both in one run, then verifies", async () => {
+    addGroup(SUB, "rg-saiel-course-111111", "learner@example.com");
+    addGroup(SUB, "rg-saiel-course-222222", "learner@example.com");
+    const run = await act("azure-down", ["rg-saiel-course-111111", "rg-saiel-course-222222"]);
+    expect(run.confirms.map((c) => c.expected)).toEqual(["rg-saiel-course-111111", "rg-saiel-course-222222"]);
+    expect(run.status, run.output).toBe("passed");
+    expect(groupsIn(SUB)).toEqual([]);
+    expect(run.output).toMatch(/Verified: no course resources remain/);
+    expect(await banners()).toEqual([]);
+  });
+
+  test("cancelling the second of two confirmations keeps the second group and the banner", async () => {
+    addGroup(SUB, "rg-saiel-course-111111", "learner@example.com");
+    addGroup(SUB, "rg-saiel-course-222222", "learner@example.com");
+    const run = await act("azure-down", ["rg-saiel-course-111111", ""]);
+    expect(run.status).toBe("failed");
+    expect(groupsIn(SUB)).toEqual(["rg-saiel-course-222222"]);
+    expect(await banners()).toEqual([expect.stringMatching(/may exist/)]);
+  });
+
+  test("down refuses a recorded resource group that is not course-tagged", async () => {
+    const s = state();
+    s.worlds[SUB] = { groups: { "rg-shared-prod": { tags: { team: "payments" }, resources: [{ type: "Microsoft.Sql/servers", name: "sql" }] } }, deleted: [] };
+    writeFileSync(stateFile, JSON.stringify(s));
+    write(durable, JSON.stringify({ subscriptionId: SUB, resourceGroup: "rg-shared-prod" }));
+    const run = await act("azure-down", ["rg-shared-prod"]);
+    expect(run.status).toBe("failed");
+    expect(run.confirms).toEqual([]);
+    expect(run.output).toMatch(/rg-shared-prod is not tagged course=senior-ai-engineer-labs; refusing to delete it/);
+    expect(calls("group delete")).toEqual([]);
+    expect(groupsIn(SUB)).toEqual(["rg-shared-prod"]);
+    expect(await banners()).toEqual([expect.stringMatching(/^Cost status unknown/)]);
   });
 
   test("deleting course/.azure brings back Cost status unknown from the record outside the checkout", async () => {
@@ -477,6 +513,17 @@ describe.runIf(posix)("prices override (S4)", () => {
     expect(run.output).toMatch(/9\.99 USD\/hour/);
     expect(hits).toBeGreaterThan(0);
   });
+  test("ignored for a host that only looks like loopback", async () => {
+    const lookalike = url.replace("127.0.0.1", "localhost.evil.invalid");
+    const run = await direct("prices", { env: { ICODE_AZURE_PRICES_API: lookalike } });
+    expect(run.output).not.toMatch(/overridden|9\.99/);
+    expect(hits).toBe(0);
+  }, 180000);
+  test("ignored for the prices command unless live Azure is off", async () => {
+    const run = await direct("prices", { env: { ICODE_AZURE_PRICES_API: url, ICODE_AZURE_LIVE: "" } });
+    expect(run.output).not.toMatch(/overridden|9\.99/);
+    expect(hits).toBe(0);
+  }, 180000);
   test("never used for the price shown before “create”, with live Azure off or on", async () => {
     const live = await direct("plan", { env: { ICODE_AZURE_PRICES_API: url, ICODE_AZURE_LIVE: "" } });
     expect(live.output).not.toMatch(/overridden|9\.99/);

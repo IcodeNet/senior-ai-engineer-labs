@@ -6,7 +6,7 @@ Every foundation step follows the same template: **Concept**, **Theory**, 3–5 
 
 ## Prerequisites
 
-- Node.js 22.13 or later (with npm and Corepack)
+- Node.js 22.13 or later, with npm (setup uses Corepack when present, and npx otherwise)
 - Git
 
 Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. Modules 3 and 4 have live Azure tests (steps 17–23, 27 and 28), paid while the resources exist; their offline tests are free. See below and step 02.

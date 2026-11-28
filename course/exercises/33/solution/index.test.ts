@@ -122,6 +122,9 @@ test("caller errors (4xx) do not open the circuit for everyone", async () => {
   assert.equal(breaker.state(), "closed", "a caller error on the half-open trial still proves the dependency is up");
   assert.deepEqual([400, 401, 403, 404, 422].map((status) => isCallerError(new HttpError(status))), [true, true, true, true, true]);
   assert.deepEqual([408, 429, 500, 503].map((status) => isCallerError(new HttpError(status))), [false, false, false, false]);
+  assert.deepEqual([399, 400, 499, 500].map((status) => isCallerError(new HttpError(status))), [false, true, true, false], "the caller-error range is exactly 400-499");
+  assert.equal(isCallerError(new HttpError(302)), false, "a redirect is not proof that the dependency is healthy");
+  assert.equal(isCallerError({ status: 400 }), false, "only an HttpError counts");
   assert.equal(isCallerError(new TypeError("fetch failed")), false);
   const strict = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 1000, now: () => 0, isFailure: () => true });
   await assert.rejects(strict.call(async () => { throw new HttpError(400); }));
@@ -142,6 +145,19 @@ test("network errors, resets and bugs count as failures, so a hard outage opens 
   clock = 2000;
   await assert.rejects(breaker.call(async () => { throw new TimeoutError(10); }), TimeoutError);
   assert.equal(breaker.state(), "open");
+});
+
+test("every 5xx is a dependency failure, including 501 and 505 that are not retried", async () => {
+  for (const status of [501, 505, 511]) {
+    assert.equal(isCallerError(new HttpError(status)), false, String(status));
+    assert.equal(isRetryable(new HttpError(status)), false, `${status} will fail again, so it is not retried`);
+  }
+  const breaker = new CircuitBreaker({ failureThreshold: 2, cooldownMs: 1000, now: () => 0 });
+  let calls = 0;
+  const notImplemented = async () => { calls++; throw new HttpError(501); };
+  for (let i = 0; i < 5; i++) await assert.rejects(breaker.call(notImplemented));
+  assert.equal(breaker.state(), "open", "a 501 is the dependency failing, not the caller");
+  assert.equal(calls, 2);
 });
 
 test("fallbacks degrade gracefully and say so", async () => {

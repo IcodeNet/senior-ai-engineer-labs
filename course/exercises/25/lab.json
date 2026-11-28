@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Why chunk: fixed, sentence-aware and structure-aware chunkers",
+  "description": "Implement three chunkers with size and overlap, then compare them on Northbank documents by how often a whole answer lands in one chunk.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

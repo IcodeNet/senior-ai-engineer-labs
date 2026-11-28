@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Evaluate on Azure, then shut down",
-  "description": "Measure the four retrieval modes on real Azure with the labelled set, then remove every paid resource.",
+  "title": "Enrich with a skillset: language and key phrases",
+  "description": "Define built-in skills, resolve the enrichment tree and execution order, map enrichments to index fields, and run an enriching indexer.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

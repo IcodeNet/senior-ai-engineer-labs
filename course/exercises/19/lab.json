@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Keyword, vector, hybrid and semantic search on Azure",
-  "description": "Query Azure AI Search four ways, always behind a backend approval filter.",
+  "title": "Load the index with the push API",
+  "description": "Batch documents within the service limits, choose upload, merge, mergeOrUpload or delete, and handle 207 partial failures with retries.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

@@ -133,7 +133,7 @@ export function chooseTarget(record, { signedIn, explicit, computedGroup }) {
     return { subscriptionId: current, group: record.resourceGroup ?? computedGroup, recorded: true, groupRecorded: Boolean(record.resourceGroup) };
   }
   if (record.problem)
-    throw new Error(`Cannot tell which subscription Lab 03 used: ${record.problem}. Sign in to the subscription you used (\`az account set --subscription <id>\`), then from course/ run \`npm run azure:verify -- --subscription <id>\` to sweep it for course-tagged resources`);
+    throw new Error(`Cannot tell which subscription the course used: ${record.problem}. Sign in to the subscription you used (\`az account set --subscription <id>\`), then from course/ run \`npm run azure:verify -- --subscription <id>\` to sweep it for course-tagged resources`);
   if (record.subscriptionId && record.subscriptionId !== current)
     throw new Error(`Course resources were recorded in subscription ${record.subscriptionId}, but you are signed in to ${signedIn}. Run \`az account set --subscription ${record.subscriptionId}\` and try again`);
   return { subscriptionId: current, group: record.resourceGroup ?? computedGroup, recorded: Boolean(record.subscriptionId), groupRecorded: Boolean(record.resourceGroup) };
@@ -144,8 +144,8 @@ export function lostStateMarker(durable, markersPresent) {
   if (!durable.exists || markersPresent) return undefined;
   return {
     reason: durable.corrupt
-      ? `the Lab 03 state record outside the course (${durable.path}) cannot be read`
-      : `course/.azure was removed, but Lab 03 set-up recorded resources (record: ${durable.path})`,
+      ? `the course's Azure state record outside the course folder (${durable.path}) cannot be read`
+      : `course/.azure was removed, but Azure set-up recorded resources (record: ${durable.path})`,
     subscriptionId: durable.value?.subscriptionId,
     resourceGroup: durable.value?.resourceGroup,
   };

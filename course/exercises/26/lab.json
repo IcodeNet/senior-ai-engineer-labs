@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Embeddings and similarity: cosine, dot product and normalisation",
+  "description": "Implement dot product, norms, normalisation, cosine and Euclidean distance; rank chunks by similarity; refuse to compare embeddings from different models or dimensions.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

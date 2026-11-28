@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 // Azure is never reached: live tests are off, and az gets an empty config directory, so it is signed out.
-// The Lab 03 state record outside the checkout goes to a throwaway config directory, never the learner's own.
+// The course's Azure state record outside the checkout goes to a throwaway config directory, never the learner's own.
 const azureConfig = await mkdtemp(join(tmpdir(), "icode-no-azure-"));
 const configHome = await mkdtemp(join(tmpdir(), "icode-config-"));
 const outsideRecord = join(configHome, "icode-workshop", "senior-ai-engineer-labs-azure.json");
@@ -100,14 +100,14 @@ try {
   evidence.push("Editing and saving in the browser turns the failing playground into a passing one");
   await page.screenshot({ path: join(root, "acceptance-results/course.png"), fullPage: true });
 
-  // Lab 03 course actions: listed in the Actions tab, set-up and shutdown marked destructive.
+  // Course Azure actions: listed in the Actions tab, set-up and shutdown marked destructive.
   await page.getByRole("tab", { name: /^Actions/ }).click();
-  const lab03 = page.getByRole("region", { name: "Lab 03 · Real Azure" });
-  for (const action of course.actions) await lab03.getByRole("button", { name: action.label, exact: true }).waitFor();
-  assert.equal(await lab03.locator(".badge.danger").count(), 2, "set-up and shutdown must be marked destructive");
-  evidence.push(`Actions tab lists the ${course.actions.length} Lab 03 actions; set-up and shutdown are marked destructive`);
+  const azure = page.getByRole("region", { name: "Module 3 · Azure" });
+  for (const action of course.actions) await azure.getByRole("button", { name: action.label, exact: true }).waitFor();
+  assert.equal(await azure.locator(".badge.danger").count(), 2, "set-up and shutdown must be marked destructive");
+  evidence.push(`Actions tab lists the ${course.actions.length} Azure actions; set-up and shutdown are marked destructive`);
   // Plan runs from the UI; with az signed out (or absent) it stops before reading any subscription.
-  await lab03.getByRole("button", { name: course.actions.find((a) => a.id === "azure-plan").label, exact: true }).click();
+  await azure.getByRole("button", { name: course.actions.find((a) => a.id === "azure-plan").label, exact: true }).click();
   const actionOutput = page.getByRole("log", { name: "Action output" });
   await until(async () => /Not signed in to Azure|Azure CLI not found/.test((await actionOutput.textContent()) ?? ""), "plan must run from the Actions tab and report the missing sign-in");
   await until(async () => /· failed/.test((await page.locator(".actions-panel .execution-summary").textContent()) ?? ""), "plan run must finish");

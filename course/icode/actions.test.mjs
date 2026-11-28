@@ -1,4 +1,4 @@
-// Offline contract tests for the Lab 03 course actions, run through the pinned Icode Workshop engine.
+// Offline contract tests for the course Azure actions, run through the pinned Icode Workshop engine.
 // Azure is never called: a fake `az` on PATH records every call, inside a throwaway copy of the course root,
 // with a throwaway config directory for the state record kept outside the checkout.
 import { spawn } from "node:child_process";
@@ -48,8 +48,22 @@ if (cmd.startsWith("group create")) {
   out({ name: opt("--name") });
 }
 if (cmd.startsWith("deployment group create")) {
-  w.groups[opt("--resource-group")].resources = [{ type: "Microsoft.Search/searchServices", name: "srch-saiel-fake" }, { type: "Microsoft.CognitiveServices/accounts", name: "oai-saiel-fake" }];
-  out({ properties: { outputs: { searchEndpoint: { value: "https://srch-saiel-fake.search.windows.net" }, openaiEndpoint: { value: "https://oai-saiel-fake.openai.azure.com/" } } } });
+  w.groups[opt("--resource-group")].resources = [
+    { type: "Microsoft.Search/searchServices", name: "srch-saiel-fake" },
+    { type: "Microsoft.CognitiveServices/accounts", name: "oai-saiel-fake" },
+    { type: "Microsoft.Storage/storageAccounts", name: "stsaielfake" },
+  ];
+  const parameters = JSON.parse(readFileSync(opt("--parameters").replace(/^@/, ""), "utf8"));
+  s.deployedParameters = parameters;
+  const storageId = "/subscriptions/" + s.subscription + "/resourceGroups/" + opt("--resource-group") + "/providers/Microsoft.Storage/storageAccounts/stsaielfake";
+  out({ properties: { outputs: {
+    searchEndpoint: { value: "https://srch-saiel-fake.search.windows.net" },
+    openaiEndpoint: { value: "https://oai-saiel-fake.openai.azure.com/" },
+    storageAccountName: { value: "stsaielfake" },
+    storageAccountId: { value: storageId },
+    blobEndpoint: { value: "https://stsaielfake.blob.core.windows.net/" },
+    storageContainer: { value: parameters.storageContainer?.value ?? "missing" },
+  } } });
 }
 if (cmd.startsWith("group show")) out({ name: opt("--name"), tags: w.groups[opt("--name")].tags });
 if (cmd.startsWith("resource list")) {
@@ -61,7 +75,8 @@ if (cmd.startsWith("group delete")) {
   const group = w.groups[name];
   if (group.resources.some((r) => r.type.includes("CognitiveServices")))
     w.deleted.push({ name: "oai-saiel-fake", location: "swedencentral", id: "/subscriptions/" + s.subscription + "/resourceGroups/" + name + "/providers/Microsoft.CognitiveServices/accounts/oai-saiel-fake" });
-  if (s.leftover) group.resources = group.resources.slice(0, 1);
+  if (s.leftover === "storage") group.resources = group.resources.filter((r) => r.type === "Microsoft.Storage/storageAccounts");
+  else if (s.leftover) group.resources = group.resources.slice(0, 1);
   else delete w.groups[name];
   save(); process.exit(0);
 }
@@ -123,7 +138,7 @@ function direct(args, { input, answer, env = {} } = {}) {
 const engineEnv = { ICODE_ACTION: "1", ICODE_CONFIRM_TOKEN: TOKEN };
 
 beforeAll(async () => {
-  work = mkdtempSync(join(tmpdir(), "lab03-actions-"));
+  work = mkdtempSync(join(tmpdir(), "azure-actions-"));
   root = join(work, "course");
   bin = join(work, "bin");
   for (const path of ["course.json", "package.json", "icode/azure.mjs", "icode/azure-lib.mjs", "azure/config.json", "azure/main.bicep"]) {
@@ -179,7 +194,7 @@ beforeEach(() => {
   rmSync(configHome, { recursive: true, force: true });
 });
 
-describe("course.json declares the Lab 03 actions for the engine", () => {
+describe("course.json declares the Azure actions for the engine", () => {
   const { actions, indicators, sidecars } = ops.validateOperations(manifest, scripts);
   test("plan, up, status, down and verify (and prices) run the course Azure scripts", () => {
     expect(actions.map((a) => [a.id, a.script])).toEqual([
@@ -272,10 +287,22 @@ describe.runIf(posix)("actions through the engine against a fake az", () => {
     expect(JSON.parse(readFileSync(durable, "utf8"))).toMatchObject({ subscriptionId: SUB, resourceGroup: groupsIn(SUB)[0] });
     expect(await banners()).toEqual([expect.stringMatching(/resources exist/)]);
     expect(state().calls.some((c) => c.sawToken)).toBe(false); // the token never reaches az
+    // The Bicep deployment gets the Blob container from azure/config.json; env.json records what the live steps need.
+    const config = JSON.parse(readFileSync(join(root, "azure/config.json"), "utf8"));
+    expect(state().deployedParameters.storageContainer).toEqual({ value: config.storage.container });
+    expect(JSON.parse(readFileSync(join(root, COST_MARKERS.env), "utf8"))).toMatchObject({
+      storageContainer: config.storage.container,
+      blobEndpoint: "https://stsaielfake.blob.core.windows.net/",
+      storageAccountId: expect.stringMatching(/\/providers\/Microsoft\.Storage\/storageAccounts\/stsaielfake$/),
+      embeddingModel: config.embeddingModel.name,
+      dimensions: config.embeddingModel.dimensions,
+      indexName: "northbank-faq-v1",
+    });
 
     const statusRun = await act("azure-status");
     expect(statusRun.status).toBe("passed");
     expect(statusRun.output).toMatch(/srch-saiel-fake/);
+    expect(statusRun.output).toMatch(/Microsoft\.Storage\/storageAccounts\s+stsaielfake/);
 
     const group = groupsIn(SUB)[0];
     const downRun = await act("azure-down", [group]);
@@ -304,6 +331,25 @@ describe.runIf(posix)("actions through the engine against a fake az", () => {
     expect(run.output).toMatch(/Course resources remain[\s\S]*srch-saiel-fake[\s\S]*another learner[\s\S]*az group delete/);
     expect(await banners()).toEqual([expect.stringMatching(/may exist/)]);
     expect(existsSync(durable)).toBe(true);
+  });
+
+  test("a storage account left behind after shutdown is found by the tag sweep and keeps the banner", async () => {
+    await act("azure-up", ["create"]);
+    const group = groupsIn(SUB)[0];
+    setState({ leftover: "storage" });
+    const run = await act("azure-down", [group]);
+    expect(run.status).toBe("failed");
+    expect(run.output).toMatch(/Course resources remain[\s\S]*resource Microsoft\.Storage\/storageAccounts stsaielfake/);
+    expect(run.output.slice(run.output.indexOf("Course resources remain"))).not.toMatch(/srch-saiel-fake/);
+    expect(calls("resource list --tag")).not.toEqual([]);
+    expect(await banners()).toEqual([expect.stringMatching(/may exist/)]);
+    setState({ leftover: false });
+    const s = state();
+    delete s.worlds[SUB].groups[group]; // the learner deletes the group by hand, as the lesson describes
+    writeFileSync(stateFile, JSON.stringify(s));
+    const verify = await act("azure-verify");
+    expect(verify.status, verify.output).toBe("passed");
+    expect(await banners()).toEqual([]);
   });
 
   test("a failed check fails closed: Cost status unknown, and only verify clears it", async () => {

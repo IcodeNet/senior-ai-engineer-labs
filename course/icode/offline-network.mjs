@@ -1,4 +1,4 @@
-// Test-only preload for the offline Lab 03 suite (`npm run test:tools`), loaded into the test worker and, through
+// Test-only preload for the offline Azure actions suite (`npm run test:tools`), loaded into the test worker and, through
 // NODE_OPTIONS=--import, into every azure.mjs process the tests start. It makes the suite hermetic:
 // - requests to the public Retail Prices API (prices.azure.com) go to the loopback fake in ICODE_TEST_PRICES_URL,
 //   so `plan` and `up` still build their real Retail Prices requests but never leave the machine;

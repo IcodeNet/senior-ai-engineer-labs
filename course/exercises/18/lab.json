@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Embed and index documents with Azure OpenAI",
-  "description": "Generate real embeddings with Azure OpenAI and upload governed documents to Azure AI Search.",
+  "title": "Create the Northbank index on Azure",
+  "description": "Deploy the Module 2 schema to the live service, and plan schema changes: update in place, or rebuild into a new version behind an alias.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

@@ -11,7 +11,7 @@ The repository contains two things:
 
 ## The course
 
-Runs on your own machine (laptop or desktop). Modules 0–2 and the advanced modules cost nothing: no cloud account or API key.
+Runs on your own machine (laptop or desktop). Modules 0–2 and the advanced modules cost nothing: no cloud account or API key. Modules 3–4 add live Azure tests, paid while their resources exist.
 
 **Prerequisites:** Node.js 22.13 or later, Git.
 
@@ -28,15 +28,16 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 | 0 · Welcome: what you'll build, how this course works, costs and shutdown before anything is created | 01–02 | authored |
 | 1 · Search foundations: why retrieval, analyzers and the inverted index, BM25 | 05–07 | authored |
 | 2 · Index design: field attributes, the Northbank schema, query syntax and OData filters | 10–12 | authored |
-| Lab 03 · Real Azure (paid while running), in Module 3's step range | 17–21 | authored |
-| 3–11 · Provision and load, chunking and embeddings, retrieval modes, governance, evaluation, RAG API, React FAQ app, agent, operate | 17–66 | planned |
+| 3 · Provision and load (live): Bicep and costs, the Northbank index, push loading, Blob indexer with `jsonArray`, skillset, knowledge store, governed queries | 17–23 | authored |
+| 4 · Chunking and embeddings: chunkers compared, similarity metrics, vector fields and HNSW, integrated vectorization (live) | 25–28 | authored |
+| 5–11 · Retrieval modes, governance, evaluation, RAG API, React FAQ app, agent, operate | 30–66 | planned |
 | Advanced A1 · Agent engineering and MCP | 71–78 | authored |
 | Advanced A2 · Production AI | 79–86 | authored |
 | Advanced A3 · Architecture and interview drills | 87–94 | authored |
 
 **Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md).
 
-The local modules use deterministic fakes, so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
+The local modules use deterministic fakes, so they are repeatable and free. Modules 3 and 4 also run against **real Azure** and cost money while their resources exist:
 
 ```sh
 npm run azure:plan   # live prices and model checks; creates nothing
@@ -45,7 +46,7 @@ npm run azure:down   # type the group name to delete everything; charges stop
 npm run azure:verify # confirms nothing remains
 ```
 
-The Basic search service is billed every hour until `azure:down`; Azure OpenAI is billed per token. See [`course/README.md`](course/README.md#lab-03--real-azure-paid-while-running).
+The Basic search service is billed every hour until `azure:down`; Azure OpenAI is billed per token; the storage account per GB and operation. See [`course/README.md`](course/README.md#modules-34--provision-and-load-chunking-and-embeddings-live-azure-paid-while-running).
 
 Details, verification commands and the authoring guide: [`course/README.md`](course/README.md).
 
@@ -71,7 +72,7 @@ pnpm --filter @labs/agent-factory test
 
 ## Status
 
-The course structure is in [ADR 0005](docs/architecture/0005-azure-ai-search-course-redesign.md). Modules 0–2 (TypeScript) are authored; Modules 3–11 and the .NET and FastAPI tracks are planned. Lab 03 is verified offline in CI; its live run against Azure has not yet been verified on a real subscription. The advanced modules A1–A3 are local and deterministic, verified in CI. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+The course structure is in [ADR 0005](docs/architecture/0005-azure-ai-search-course-redesign.md). Modules 0–4 (TypeScript) are authored; Modules 5–11 and the .NET and FastAPI tracks are planned. The live Azure steps (Modules 3–4) are verified offline in CI; their live run has not yet been verified on a real subscription. The advanced modules A1–A3 are local and deterministic, verified in CI. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
 
 ## Rules for contributors and agents
 

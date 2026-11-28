@@ -1,130 +1,174 @@
-# 17 · Provision Azure and create a real index
+# 17 · Provision Azure AI Search with Bicep
 
-> **Cost notice.** The live tests in this step call real, billable Azure resources that you create with the **Set up Azure** action. Azure AI Search Basic is charged for every hour it exists; Azure OpenAI is charged per token. While anything may exist, a red cost banner shows on every lesson. When you finish the lab, run **Shut down Azure** and then **Verify cost is zero** (lesson 21). Without Azure, the live tests are skipped and the offline tests still check your code.
+*Module 3 · Provision and load (live) · step 1 of 7 · Track: TypeScript*
 
-## Set up Azure (once for steps 17–21)
-Everything in this section runs from the **Actions** tab of the output panel, group **Lab 03 · Real Azure**. Each action runs a course script (`npm run azure:*` in `course/`) and streams its output there. Every action also works from a terminal in `course/` (the fallback commands are shown below).
+> **Cost notice.** From this step the course can create real, billable Azure resources. Nothing is created until you run **Set up Azure** and type `create`. Azure AI Search Basic is billed for every hour it exists; Azure OpenAI is billed per token; Blob storage is billed per GB and per operation. While anything may exist, a red cost banner shows on every lesson. Shut down with **Shut down Azure**, then **Verify cost is zero** (lesson 23). Without Azure, the live tests are skipped and the offline tests still check your code.
 
-### Prerequisites
-- **An Azure subscription** you may spend a few dollars in. A free-trial or Visual Studio subscription works if it allows Azure OpenAI and Azure AI Search Basic.
-- **Permission to create resource groups and role assignments** in it: **Owner**, or **Contributor plus User Access Administrator** (Role Based Access Control Administrator also grants role assignments). Set-up gives your own account data-plane roles on the new resources because API keys are disabled. Contributor alone fails at the role-assignment step. Assign these roles **at subscription scope**: Shut down purges the soft-deleted Azure OpenAI account, which needs `Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts/delete`, and when that comes through Contributor it must be assigned at the subscription level.
-- **The Azure CLI** ([install](https://aka.ms/azure-cli)), signed in as a user rather than a service principal. The course scripts use your `az` login for everything; they never ask for or store a key or secret. From a terminal:
+## Concept
+
+Module 2 designed the Northbank index on your machine. Module 3 makes it real: a search service in Azure, the index on it, documents loaded two ways (push and pull), and queries against it. This step is about the service itself: what you are renting, what it costs per hour, and how one Bicep file creates it with no keys anywhere.
+
+```text
+azure/main.bicep  ──►  one resource group, tagged course=senior-ai-engineer-labs
+                       ├─ Azure AI Search, Basic, 1 search unit, system-assigned identity, keys off
+                       ├─ Azure OpenAI (S0): "embed" and "chat" deployments, keys off
+                       ├─ Storage account (StorageV2, LRS): container "northbank-faq", shared keys off
+                       └─ role assignments: you → search, OpenAI, blobs; search identity → blobs (read), OpenAI (use)
+```
+
+Why a senior engineer cares: the tier decides features, limits and the bill, and most of it cannot be changed later without rebuilding. Infrastructure as code makes the decision reviewable, repeatable and removable.
+
+## Theory
+
+**Pricing models and tiers.** Azure AI Search has two pricing models. **Dedicated** tiers (Free, Basic, Standard S1–S3, Storage Optimized L1–L2) give you fixed capacity in **search units**. **Serverless** is consumption-based (compute units and GB stored), has no replicas or partitions to set, and cannot be migrated to or from the dedicated tiers. The course uses dedicated Basic, so the cost model is simple and visible.
+
+**Search units: replicas × partitions.** Partitions hold storage and indexing capacity; replicas serve queries and give availability. A service starts at one of each, one search unit, and adding either multiplies the hourly rate linearly: three replicas cost three times one. Basic supports up to three replicas. Billing is per search unit per hour, around the clock, whether you query or not. There is no pause: only deleting the service stops the charge.
+
+**Why Basic, not Free.** Free is shared, limited, cannot scale, can be deleted after inactivity and, critically here, has **no managed identity for outbound indexer access**. The pull pipeline (steps 20–21) and integrated vectorization (step 28) need the service's own identity to read Blob storage and call Azure OpenAI without keys. Basic is the cheapest tier that supports that. You can switch between Basic and Standard later; other tier changes need a new service and a rebuild.
+
+**The semantic ranker plan.** The ranker is a premium feature with two plans: **free** (the default; a monthly allowance, then requests fail with a billing error) and **standard** (pay as you go after the allowance; Basic or higher). Charges occur only for `queryType=semantic` requests with a non-empty search string. The course pins `semanticSearch: 'free'`, so a runaway loop fails instead of billing. From Search REST `2026-04-01`, agentic retrieval has its own billing consent (`knowledgeRetrieval`), separate from the ranker.
+
+**Keyless by construction.** `disableLocalAuth: true` on search and Azure OpenAI, and `allowSharedKeyAccess: false` on storage, mean API keys and account keys do not work at all. You call the data planes with Microsoft Entra ID tokens from `az`, authorised by role assignments. The search service's **system-assigned identity** gets **Storage Blob Data Reader** on the storage account and **Cognitive Services OpenAI User** on Azure OpenAI: least privilege for what indexers do. Role assignments are scoped to resources inside the course group, so deleting the group deletes them too.
+
+**What costs money.**
+
+| Resource | Billed by | Stops when |
+|---|---|---|
+| Search, Basic, 1 unit | every hour it exists | the service is deleted |
+| Azure OpenAI deployments | tokens sent and received | you stop calling them (the account itself has no hourly charge) |
+| Built-in AI skills (key phrases, language) | 20 documents per indexer per day free; beyond that they need a billable Azure AI services resource, otherwise they fail | – |
+| Storage account | GB stored per month and operations | it is deleted |
+| Role assignments, resource group, budgets | free | – |
+
+**Failure modes.** A forgotten Basic service costs a day's charge every day. Quota errors part-way through set-up leave what was already created running. A 403 straight after set-up usually means role assignments have not propagated yet: wait a few minutes. Budgets notify; they never stop spending.
+
+**When not to do this.** If you only need to try queries once, the Azure portal's import wizard is faster. Use Bicep when the environment must be reviewed, repeated and torn down with confidence.
+
+## Check questions
+
+```question
+prompt: A Basic service has 1 replica and 1 partition. You add 2 replicas for availability. What happens to the hourly charge?
+options:
+  - It stays the same, because replicas only serve queries
+  - It triples, because cost is per search unit and units are replicas × partitions
+  - It doubles, because only the added replicas are billed at half rate
+answer: It triples, because cost is per search unit and units are replicas × partitions
+explanation: >-
+  Dedicated tiers bill per search unit per hour, and units are replicas multiplied by partitions. Three replicas and one
+  partition are three units, so three times the hourly rate, every hour, whether queried or not.
+```
+
+```question
+prompt: Why does the course provision Basic rather than the Free tier, even for a short lab?
+answer: Free has no managed identity for outbound indexer access, so a keyless indexer could not read Blob storage or call Azure OpenAI; Basic is the cheapest tier that can.
+explanation: >-
+  Free is also shared, unscalable and can be deleted after inactivity. The decisive point for this course is identity:
+  the pull pipeline and integrated vectorization must authenticate as the search service, not with keys.
+```
+
+```question
+prompt: The semantic ranker is on the free plan and the monthly allowance runs out. What happens to further semantic queries?
+options:
+  - They are billed at the standard rate
+  - They fail with a billing error until the allowance resets or you switch to the standard plan
+  - They silently fall back to vector search
+answer: They fail with a billing error until the allowance resets or you switch to the standard plan
+explanation: >-
+  The free plan caps usage; it never bills. Only the standard plan bills beyond the allowance. That is why the course
+  pins semanticSearch to free: a bug that loops over semantic queries fails loudly instead of spending.
+```
+
+```question
+prompt: disableLocalAuth is true on the search service. A colleague pastes an admin API key into a script. What happens, and why is that the point?
+answer: >-
+  The request is rejected: with local authentication disabled, keys are not accepted at all, so only Entra ID tokens with role assignments work and there is no shared secret to leak.
+explanation: >-
+  Keyless is a property of the resource, not a coding convention. It removes key rotation, key leakage and
+  all-powerful admin keys, and access becomes auditable per identity through role assignments.
+```
+
+## Hands-on
+
+Implement in `index.ts`, offline first:
+
+- `searchUnits(spec)`: replicas × partitions. Partitions must be 1, 2, 3, 4, 6 or 12; replicas 1–12; Basic at most 3 replicas; Free is 0 units and cannot be scaled. Throw `RangeError` otherwise.
+- `serviceCost(spec, unitHourPrice)`: `{ units, hourly, thirtyDays }`, rounded to the cent. The tests use illustrative prices.
+- `reviewSearchService(spec)`: one finding per broken rule: `free-tier`, `local-auth`, `identity`, `semantic-billing`, `tags` (course, owner, expiresAt) and `capacity` (more than one unit).
+- `serviceUsage(http, endpoint)`: `GET /servicestats` with audience `search`; map `indexesCount`, `indexersCount`, `dataSourcesCount`, `storageSize` and `vectorIndexSize` to `{ used, quota }`; throw `service statistics failed: <status> <message>` or on a missing counter.
+
+`azure.ts` provides the keyless HTTP transport, a fake for tests, and `live`, which is set only when `course/.azure/env.json` exists. Then read `azure/main.bicep`: your `reviewSearchService` rules are what it declares.
+
+### Set up Azure (once for Modules 3 and 4)
+
+Everything runs from the **Actions** tab of the output panel, group **Module 3 · Azure**. Each action runs a course script (`npm run azure:*` in `course/`) and streams its output there; each also works from a terminal in `course/`.
+
+**Prerequisites.**
+- An Azure subscription you may spend a few dollars in, which allows Azure OpenAI and Azure AI Search Basic.
+- **Owner**, or **Contributor plus User Access Administrator** (or Role Based Access Control Administrator), **at subscription scope**. Set-up creates role assignments, which Contributor alone cannot; shutdown purges the soft-deleted Azure OpenAI account, which needs `Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts/delete` at subscription level.
+- The [Azure CLI](https://aka.ms/azure-cli), signed in as a user (not a service principal). The scripts use your `az` login for everything and never ask for or store a key:
 
   ```sh
-  az login                                  # opens a browser; pick your account
+  az login
   az account set --subscription "<name or id>"   # only if you have several
-  az account show --query "{name:name, id:id, user:user.name}"   # what the course will use
+  az account show --query "{name:name, id:id, user:user.name}"
   ```
 
-  The Icode actions run with the same `az` login, so sign in once in any terminal. If an action reports "Not signed in to Azure", sign in and run it again.
-
-### The actions
-| Action (Actions tab) | Terminal fallback | What it does | Cost |
+| Action (Actions tab) | Terminal | What it does | Cost |
 |---|---|---|---|
-| Show live Azure prices (no sign-in) | `npm run azure:prices` | Reads list prices for `azure/config.json`'s region from the Azure Retail Prices API. | None |
-| Plan Azure set-up (creates nothing) | `npm run azure:plan` | Shows the subscription, signed-in user and resource group it would use, checks both models are offered in the region, and prints live prices. | None |
-| Set up Azure (billable) | `npm run azure:up` | Runs the plan, then asks you to type `create`. Creates the resource group, deploys `azure/main.bicep` and writes endpoints to `course/.azure/env.json`. Takes several minutes. | Starts billing |
-| Azure status and cost so far | `npm run azure:status` | Lists what is running and estimates the search cost since creation. | None |
-| Shut down Azure (delete everything) | `npm run azure:down` | Asks you to type the resource group name, deletes the group, purges the soft-deleted Azure OpenAI account, then runs Verify. | Stops billing |
-| Verify cost is zero | `npm run azure:verify` | Checks the subscription for anything left with the course tag, including soft-deleted accounts. | None |
+| Show live Azure prices (no sign-in) | `npm run azure:prices` | List prices for `azure/config.json`'s region from the Azure Retail Prices API | none |
+| Plan Azure set-up (creates nothing) | `npm run azure:plan` | Subscription, user and resource group it would use; checks both models are offered; live prices | none |
+| Set up Azure (billable) | `npm run azure:up` | Runs the plan, asks you to type `create`, creates the group, deploys `azure/main.bicep`, writes `course/.azure/env.json` | starts billing |
+| Azure status and cost so far | `npm run azure:status` | What is running and the search cost since creation | none |
+| Shut down Azure (delete everything) | `npm run azure:down` | Asks for the group name, deletes the group, purges the soft-deleted OpenAI account, verifies | stops billing |
+| Verify cost is zero | `npm run azure:verify` | Sweeps the subscription for anything with the course tag, including soft-deleted accounts | none |
 
-**Typed confirmations.** Set up and Shut down are marked **Destructive**. When one needs your confirmation, Icode opens a dialog. The confirm button stays disabled until you type the exact text: `create`, or the resource group name. **Cancel** sends nothing, and the script stops without changing anything. In a terminal, the same scripts ask at the prompt.
+**Typed confirmations.** Set up and Shut down are marked **Destructive**. Icode opens a dialog whose confirm button stays disabled until you type the exact text: `create`, or the resource group name. **Cancel** sends nothing and changes nothing. In a terminal the same scripts ask at the prompt. Your own machine is trusted: the checks stop accidental and automated answers (piped input such as `echo create | npm run azure:up`, input that arrives before the question, a confirmation forged in tool output without the run's token). They cannot stop a program that deliberately imitates Icode, so do not let scripts or agents run these actions unattended.
 
-What these confirmations protect against, and what they do not: your own machine is trusted. The scripts stop **accidental and automated** answers:
-- piped input in a terminal (`echo create | npm run azure:up` does nothing);
-- a confirmation that arrives on stdin before the question is asked (refused even when the run claims to be an Icode action);
-- a confirmation request forged in some tool's output, which Icode ignores because it lacks the run's secret token.
+**Running and cancelling.** An action keeps running if you reload or close the tab; only **Cancel action** stops it. Cancelling set-up or shutdown part-way can leave resources billing, so the banner stays until Verify passes.
 
-They cannot stop a program on your machine that deliberately imitates Icode, for example by waiting for the question and then answering it. Do not let scripts or AI agents run these actions for you unattended.
-
-**Running and cancelling.** An action keeps running if you reload or close the tab. Come back to the Actions tab to follow it. Only **Cancel action** stops it. Cancelling set-up or shutdown part-way can leave resources running and billing, so the cost banner stays on until **Verify cost is zero** passes.
-
-### The cost banner
-The banner is driven by files in `course/.azure/`, which the scripts write. It fails closed: when in doubt, it shows.
+**The cost banner fails closed.**
 
 | Banner | Shown while | Clears when |
 |---|---|---|
-| "Lab 03 Azure resources exist" | `.azure/env.json` exists: set-up finished | Shut down and Verify pass |
-| "Paid Lab 03 Azure resources may exist" | set-up or shutdown started but did not finish, or a check found course resources | Verify finds nothing |
-| "Cost status unknown" | Lab 03 cannot tell what exists. Either a status, shutdown or verify check failed (signed out, `az` missing, an Azure error), or it is unclear which subscription to check: you are signed in to a different one, or the record is unreadable or missing the subscription. It also shows when `course/.azure/` was deleted after set-up. The reason is in `.azure/cost-status-unknown.json`. Icode also shows this banner if it cannot check the files at all. | Verify succeeds in the recorded subscription. Status never clears it. |
+| "Course Azure resources exist" | `.azure/env.json` exists | Shut down and Verify pass |
+| "Paid course Azure resources may exist" | set-up or shutdown did not finish, or a check found course resources | Verify finds nothing |
+| "Cost status unknown" | a check failed (signed out, `az` missing, an Azure error), the subscription is unclear, or `course/.azure/` was deleted after set-up; the reason is in `.azure/cost-status-unknown.json` | Verify succeeds in the recorded subscription |
 
-**Do not delete `course/.azure/` while resources may exist.** `git clean -X`, a fresh clone or a manual delete would remove the banner's files. To catch that, set-up also keeps a copy of the record outside the course folder:
-- `~/.config/icode-workshop/senior-ai-engineer-labs-azure.json` on Linux and macOS (`$XDG_CONFIG_HOME` if set);
-- `%APPDATA%\icode-workshop\senior-ai-engineer-labs-azure.json` on Windows.
+Do not delete `course/.azure/` while resources may exist. Set-up keeps a copy of the record outside the course folder (`~/.config/icode-workshop/senior-ai-engineer-labs-azure.json`, or `$XDG_CONFIG_HOME`; `%APPDATA%\icode-workshop\…` on Windows). While it exists, the `azure-cost-watch` sidecar (Processes tab) and every Azure action restore a "Cost status unknown" banner within seconds if `course/.azure/` is gone. Only a passing **Verify cost is zero** removes it. The record is per machine.
 
-While that record exists, the workshop's `azure-cost-watch` sidecar (listed in the **Processes** tab) and every Lab 03 action restore a "Cost status unknown" banner within seconds if `course/.azure/` is gone. Only a passing **Verify cost is zero** removes the record.
-
-The record is per machine. If you set up from another machine, run **Verify cost is zero** here to check the subscription.
-
-### Region and models
-`azure/config.json` sets the region (default `swedencentral`), the chat model (`gpt-5-mini`, version `2025-08-07`, `GlobalStandard`) and the embedding model (`text-embedding-3-small`, version `1`, `GlobalStandard`, 1536 dimensions). **Plan** refuses a model that the region does not offer, or that retires within a week, and lists the versions it found:
-
-```text
-✖ Model gpt-5-mini 2025-08-07 (GlobalStandard): version 2025-08-07 not offered here (available: …)
-```
-
-Check availability yourself with:
+**Region and models.** `azure/config.json` sets the region (`swedencentral`), the chat model (`gpt-5-mini` `2025-08-07`, `GlobalStandard`), the embedding model (`text-embedding-3-small` `1`, `GlobalStandard`, 1536 dimensions) and the Blob container (`northbank-faq`). **Plan** refuses a model the region does not offer, or that retires within a week, and lists what it found. Check yourself with:
 
 ```sh
-az cognitiveservices model list --location swedencentral \
-  --query "[?model.name=='gpt-5-mini'].{version:model.version, skus:join(',', model.skus[].name), retires:model.deprecation.inference}" -o table
 az cognitiveservices model list --location swedencentral \
   --query "[?model.name=='text-embedding-3-small'].{version:model.version, skus:join(',', model.skus[].name)}" -o table
 ```
 
-Then edit `azure/config.json`: change `region` to one that lists both models, or change `version` or `sku` to one that is listed. If you change the embedding model, set `dimensions` to its vector size, because the index (this step) and the embeddings (step 18) must match. Some subscriptions also have no quota for a model in a region. Set-up then fails with a quota error. Anything it already created, such as the search service, stays and bills until you run **Shut down Azure**; the "may exist" banner reminds you. Try another region, or lower `capacity` (thousands of tokens per minute). Run **Plan** again until both models show ✔.
+Edit `region`, `version` or `sku` until **Plan** shows ✔ for both. If you change the embedding model, set `dimensions` to its vector size: the index and the embeddings must match. A quota error part-way through set-up leaves what was created running; the "may exist" banner reminds you to shut down.
 
-### What it costs
-List prices from the public [Azure Retail Prices API](https://learn.microsoft.com/rest/api/cost-management/retail-prices/azure-retail-prices) for `swedencentral`, in USD, retrieved 2026-11-28 by **Show live Azure prices** (CI run [46085568640](https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46085568640)). Your currency, agreement and taxes may differ. Run the action for today's prices in your region.
+**What it costs.** List prices from the public [Azure Retail Prices API](https://learn.microsoft.com/rest/api/cost-management/retail-prices/azure-retail-prices) for `swedencentral`, in USD, retrieved 2026-11-28 by **Show live Azure prices** (CI run [46085568640](https://github.com/IcodeNet/senior-ai-engineer-labs/actions/runs/46085568640)). Run the action for today's prices in your region; your agreement, currency and taxes may differ.
 
-| Resource set-up creates | Billing | List price |
+| Resource | Billing | List price |
 |---|---|---|
-| Azure AI Search, Basic, 1 search unit (semantic ranker on its free plan) | every hour it exists, used or not | 0.101 USD/hour ≈ 2.42 USD/day ≈ 73.73 USD/month |
-| Azure OpenAI `text-embedding-3-small` (GlobalStandard) | per token | 0.00002 USD per 1K tokens (0.02 USD per million) |
-| Azure OpenAI `gpt-5-mini` (GlobalStandard) | per input and output token | input 0.25, cached input 0.025, output 2.00 USD per million tokens |
-| Semantic ranker, free plan | monthly allowance; over it, requests fail rather than bill | 0 |
-| Role assignments, resource group | — | 0 |
+| Azure AI Search, Basic, 1 search unit | every hour it exists | 0.101 USD/hour ≈ 2.42 USD/day ≈ 73.73 USD/month |
+| `text-embedding-3-small` (GlobalStandard) | per token | 0.02 USD per million tokens |
+| `gpt-5-mini` (GlobalStandard) | per input and output token | input 0.25, cached input 0.025, output 2.00 USD per million tokens |
+| Storage account, Standard LRS | per GB-month and per operation | the course stores a few kilobytes; use the [pricing calculator](https://azure.microsoft.com/pricing/calculator/) for your region |
+| Semantic ranker (free plan), key phrase and language skills (first 20 documents per indexer per day) | allowance | 0 within the allowance |
 
-Steps 17–21 embed a few dozen short documents and send a few dozen chat requests. Even a generous 100,000 input and 150,000 output tokens (`gpt-5-mini` is a reasoning model, and its thinking is billed as output) cost about 0.33 USD. Embeddings cost a fraction of a cent. A session that sets up, works through steps 17–21 in four hours and shuts down is therefore about 0.40 USD of search plus tokens: **under 1 USD**. A forgotten search service costs about 2.42 USD every day, about 74 USD a month.
+Modules 3 and 4 embed a few dozen short chunks and run a handful of indexers. A session that sets up, works for four hours and shuts down costs about 0.40 USD of search plus a few cents of tokens: **under 1 USD**. A forgotten service costs about 2.42 USD a day.
 
-**Plan** checks your models and prints the search price for your region before anything is created. Its output, abridged, with your own subscription and resource group:
+After set-up, the group `rg-saiel-course-<6 hex>` is tagged `course`, `owner` and `expiresAt` (the tag is a reminder; nothing deletes on expiry). Run this step's tests again: the live test reads your service's limits.
 
-```text
-Subscription: <your subscription> (<id>)
-Signed in as: <you>
-Region:       swedencentral
-Resource group (course only): rg-saiel-course-<6 hex>
+## Recap and next
 
-✔ Model gpt-5-mini 2025-08-07 (GlobalStandard), retires <date>
-✔ Model text-embedding-3-small 1 (GlobalStandard)
+You know what a search unit is and that it bills by the hour, why Basic is the floor for keyless indexers, how the semantic ranker plans fail or bill, and how `main.bicep` creates everything with no keys. You can set up, check status, shut down and verify from the Actions tab. **Next:** step 18 creates the Northbank index on the live service and learns which schema changes Azure can apply in place and which need a rebuild.
 
-What “Set up Azure” (`npm run azure:up`) creates and what it costs:
-  • Azure AI Search, Basic tier, 1 search unit — billed every hour it exists: 0.101 USD/hour (≈ 2.42 USD/day)
-  • Semantic ranker on the free plan — monthly allowance; extra requests fail instead of being billed.
-  • Azure OpenAI (S0) with an embedding and a chat deployment — pay per token, no hourly charge; …
-  • Role assignments for you (no keys are created).
-```
+## Further reading
 
-**Budget alerts notify you; they do not cap spending.** An Azure budget on the subscription or resource group sends an email when a threshold is crossed. Resources keep running and billing, and cost data can lag by up to a day. A budget is a useful safety net, but only **Shut down Azure** stops the charges. Stopping Icode, closing the laptop or letting the `expiresAt` tag pass do not delete anything.
-
-### After set-up
-Set-up creates one resource group named `rg-saiel-course-<hash of subscription and user>`, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. It contains an Azure AI Search **Basic** service (semantic ranker on its free plan) and an Azure OpenAI account with an `embed` and a `chat` deployment. API keys are disabled: you get role assignments, and every call uses a Microsoft Entra ID token from `az`. Role assignments can take a few minutes to apply, so a 403 right after set-up usually means "wait and retry". Then run this step's tests: the live tests now run against your index.
-
-## Why it matters
-An Azure AI Search **index** is a schema: which fields are searchable text, which are filters, which hold vectors, and how semantic ranking reads them. Governance lives here. Approval status, version and effective date must be **filterable** so the backend can enforce them on every query, and they should not be full-text searchable. The vector field declares its dimensions — they must match the embedding model exactly — and an HNSW profile with the cosine metric.
-
-Changing a field's type later means rebuilding the index, so schema design is an up-front decision.
-
-## Interview question
-> Your team stores approval status only in the source system and filters results in application code after search returns. What can go wrong, and how would you change the index design?
-
-## Your task
-Implement in `index.ts`:
-
-- `indexDefinition(name, dimensions)` — fields `id` (string key), `docId`, `title` and `content` (searchable), `status`, `version` (Edm.Int32), `isLatest` (Edm.Boolean) and `effectiveDate` (Edm.DateTimeOffset, sortable) as filters; `contentVector` as `Collection(Edm.Single)` with `dimensions`, not retrievable, using profile `default`; an HNSW algorithm with the cosine metric; a semantic configuration named `default` with `title` as title field and `content` as content field.
-- `createOrUpdateIndex(http, endpoint, definition)` — `PUT {endpoint}/indexes/{name}?api-version=<SEARCH_API>` with audience `search`; accept 200 or 201; otherwise throw `create index failed: <status> <Azure error message>`.
-
-`azure.ts` provides the keyless HTTP transport and a fake for tests.
-
-## Going further
-Index aliases let you rebuild into a new index and switch atomically; integrated vectorization lets the service call the embedding model itself.
+- [Choose a pricing model and service tier](https://learn.microsoft.com/en-us/azure/search/search-sku-tier)
+- [Plan and manage costs](https://learn.microsoft.com/en-us/azure/search/search-sku-manage-costs)
+- [Enable or disable semantic ranker billing](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-enable-disable)
+- [Connect to Azure Storage using a managed identity](https://learn.microsoft.com/en-us/azure/search/search-howto-managed-identities-storage)
+- [Key Phrase Extraction skill (billing note)](https://learn.microsoft.com/en-us/azure/search/cognitive-search-skill-keyphrases)
+- [Get Service Statistics](https://learn.microsoft.com/en-us/rest/api/searchservice/get-service-statistics/get-service-statistics)
+- [Data plane REST API versions](https://learn.microsoft.com/en-us/rest/api/searchservice/search-service-api-versions)

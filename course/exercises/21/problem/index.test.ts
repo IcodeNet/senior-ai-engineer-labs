@@ -1,51 +1,156 @@
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
-import { azureHttp, live } from "./azure.ts";
-import { chunks, evalCases, type EvalCase } from "./corpus.ts";
-import type { Retriever } from "./evaluation.ts";
-import { createOrUpdateIndex, embedTexts, indexDefinition, toIndexActions, uploadDocuments } from "./indexing.ts";
-import { buildSearchRequest, searchIndex, type Mode } from "./retrieval.ts";
-import { bestMode, compareModes, formatTable } from "./index.ts";
+import { SEARCH_API, STORAGE_API, azureHttp, liveStorage } from "./azure.ts";
+import { NORTHBANK_DOCUMENTS } from "./northbank.ts";
+import { BLOB, PULL_INDEX, blobUrl, createOrUpdate, dataSourceDefinition, pullIndex, runIndexer, toBlobRecords, uploadBlob, waitForIndexer } from "./pipeline.ts";
+import {
+  ENRICH_INDEXER,
+  KEY_PHRASE_SKILL,
+  LANGUAGE_SKILL,
+  applyOutputFieldMappings,
+  enrich,
+  enrichIndexerDefinition,
+  executionOrder,
+  getPath,
+  northbankSkillset,
+  outputPath,
+  type Skill,
+  type Skillset,
+} from "./index.ts";
 
-const cases: EvalCase[] = [
-  { id: "a", query: "a", relevant: { x: 3 } },
-  { id: "b", query: "b", relevant: { y: 3 } },
-];
-const fixed = (rankings: Record<string, string[]>): Retriever => async (query) => rankings[query];
-
-test("every mode is evaluated on the same labelled cases", async () => {
-  const results = await compareModes(cases, { keyword: fixed({ a: ["x"], b: ["z"] }), vector: fixed({ a: ["z"], b: ["y"] }), hybrid: fixed({ a: ["x"], b: ["y"] }), semantic: fixed({ a: ["z", "x"], b: ["y"] }) }, 5);
-  assert.deepEqual(Object.keys(results), ["keyword", "vector", "hybrid", "semantic"]);
-  assert.equal(results.keyword.recall, 0.5);
-  assert.equal(results.hybrid.recall, 1);
-  assert.equal(results.semantic.mrr, 0.75);
+// Offline stand-ins for the two built-in skills: deterministic, and enough to reason about the tree.
+const fakes = {
+  [LANGUAGE_SKILL]: (inputs: Record<string, unknown>) => ({ languageCode: /\b(el|la|les)\b/.test(String(inputs.text)) ? "fr" : "en", languageName: "English", score: 1 }),
+  [KEY_PHRASE_SKILL]: (inputs: Record<string, unknown>) => ({
+    keyPhrases: String(inputs.text)
+      .split(/[.,]/)
+      .map((s) => s.trim().split(" ").slice(0, 2).join(" "))
+      .filter(Boolean)
+      .map((p) => `${p} [${inputs.languageCode}]`),
+  }),
+};
+const source = toBlobRecords(NORTHBANK_DOCUMENTS)[0] as unknown as Record<string, unknown>;
+const skill = (name: string, inputs: string[], outputs: string[]): Skill => ({
+  "@odata.type": KEY_PHRASE_SKILL,
+  name,
+  context: "/document",
+  inputs: inputs.map((source, i) => ({ name: `in${i}`, source })),
+  outputs: outputs.map((targetName) => ({ name: "keyPhrases", targetName })),
 });
 
-test("the best mode is chosen per metric, keeping the first on ties", () => {
-  const scores = (recall: number, mrr: number) => ({ recall, mrr, precision: 0, ndcg: 0 });
-  const results = { keyword: scores(0.5, 1), vector: scores(0.9, 0.4), hybrid: scores(0.9, 0.8), semantic: scores(0.8, 0.9) };
-  assert.equal(bestMode(results, "recall"), "vector");
-  assert.equal(bestMode(results, "mrr"), "keyword");
-  assert.throws(() => bestMode({} as typeof results, "recall"), RangeError);
+describe("the Northbank skillset", () => {
+  test("uses the built-in skills by their @odata.type, over each chunk", () => {
+    const s = northbankSkillset();
+    assert.equal(s.name, "northbank-enrichment");
+    assert.deepEqual(s.skills.map((k) => k["@odata.type"]), ["#Microsoft.Skills.Text.LanguageDetectionSkill", "#Microsoft.Skills.Text.KeyPhraseExtractionSkill"]);
+    for (const k of s.skills) assert.equal(k.context, "/document");
+    assert.deepEqual(s.skills[0].inputs, [{ name: "text", source: "/document/chunk" }]);
+    assert.deepEqual(s.skills[1].inputs, [{ name: "text", source: "/document/chunk" }, { name: "languageCode", source: "/document/language" }]);
+    assert.equal(s.skills[1].defaultLanguageCode, "en");
+    assert.equal(s.skills[1].maxKeyPhraseCount, 10);
+  });
+
+  test("outputs land at context plus target name", () => {
+    const [language, phrases] = northbankSkillset().skills;
+    assert.equal(outputPath(language, language.outputs[0]), "/document/language");
+    assert.equal(outputPath(phrases, phrases.outputs[0]), "/document/keyPhrases");
+    assert.equal(outputPath({ ...phrases, context: "/document/pages/*" }, { name: "keyPhrases" }), "/document/pages/*/keyPhrases");
+  });
 });
 
-test("results are reported as a markdown table", () => {
-  const table = formatTable({ keyword: { recall: 0.5, precision: 0.1, mrr: 0.5, ndcg: 0.456 } } as never, 5);
-  assert.equal(table, "| Mode | Recall@5 | Precision@5 | MRR | NDCG@5 |\n|---|---|---|---|---|\n| keyword | 0.50 | 0.10 | 0.50 | 0.46 |");
+describe("execution order comes from dependencies, not array position", () => {
+  test("key phrases wait for the language they read, even when listed first", () => {
+    const s = northbankSkillset();
+    assert.deepEqual(executionOrder(s, ["chunk", "title"]), ["detect-language", "key-phrases"]);
+    assert.deepEqual(executionOrder({ ...s, skills: [...s.skills].reverse() }, ["chunk"]), ["detect-language", "key-phrases"]);
+  });
+
+  test("independent skills keep array order; nested paths are covered by their parent", () => {
+    const s: Skillset = { name: "x", skills: [skill("b", ["/document/title"], ["b"]), skill("a", ["/document/chunk"], ["a"]), skill("c", ["/document/a/deep"], ["c"])] };
+    assert.deepEqual(executionOrder(s, ["chunk", "title"]), ["b", "a", "c"]);
+  });
+
+  test("a missing input, a duplicate output or a cycle is an error that names the problem", () => {
+    assert.throws(() => executionOrder(northbankSkillset(), ["title"]), /skill detect-language input text reads \/document\/chunk, which nothing produces/);
+    assert.throws(() => executionOrder({ name: "x", skills: [skill("a", ["/document/chunk"], ["out"]), skill("b", ["/document/chunk"], ["out"])] }, ["chunk"]), /\/document\/out is produced by both a and b/);
+    assert.throws(() => executionOrder({ name: "x", skills: [skill("a", ["/document/b"], ["a"]), skill("b", ["/document/a"], ["b"])] }, ["chunk"]), /skills a, b depend on each other/);
+  });
 });
 
-describe.runIf(live)("live: evaluate retrieval modes on Azure", () => {
-  test("compares keyword, vector, hybrid and semantic on the labelled set", { timeout: 300_000 }, async () => {
-    const env = live!;
-    await createOrUpdateIndex(azureHttp, env.searchEndpoint, indexDefinition(env.indexName, env.dimensions));
-    await uploadDocuments(azureHttp, env.searchEndpoint, env.indexName, toIndexActions(chunks, await embedTexts(azureHttp, env, chunks.map((c) => `${c.title}\n${c.content}`))));
-    await new Promise((r) => setTimeout(r, 3000));
-    const vectors = new Map((await embedTexts(azureHttp, env, evalCases.map((c) => c.query))).map((v, i) => [evalCases[i].query, v]));
-    const retriever = (mode: Mode): Retriever => async (query) =>
-      (await searchIndex(azureHttp, env.searchEndpoint, env.indexName, buildSearchRequest(mode, query, vectors.get(query), { top: 5, now: new Date() }))).map((h) => h.chunkId);
-    const modes: Mode[] = ["keyword", "vector", "hybrid", "semantic"];
-    const results = await compareModes(evalCases, Object.fromEntries(modes.map((m) => [m, retriever(m)])) as Record<Mode, Retriever>, 5);
-    console.log(`\n${formatTable(results, 5)}\n\nBest Recall@5: ${bestMode(results, "recall")}. Now shut down: npm run azure:down`);
-    assert.ok(modes.some((m) => results[m].recall > 0));
+describe("the enrichment tree", () => {
+  test("starts as the source document and grows with each skill's outputs", () => {
+    const tree = enrich(source, northbankSkillset(), fakes);
+    assert.equal(getPath(tree, "/document/chunk"), source.chunk);
+    assert.equal(getPath(tree, "/document/language"), "en");
+    assert.ok(Array.isArray(getPath(tree, "/document/keyPhrases")));
+    assert.match((getPath(tree, "/document/keyPhrases") as string[])[0], /\[en\]$/, "key phrases ran after, and used, the detected language");
+    assert.equal(getPath(tree, "/document/nothing/here"), undefined);
+    assert.equal("language" in source, false, "the source document is not modified");
+  });
+
+  test("only declared outputs are kept, a missing implementation or another context is an error", () => {
+    const tree = enrich(source, northbankSkillset(), fakes);
+    assert.equal(getPath(tree, "/document/score"), undefined, "score is produced but not declared as an output");
+    assert.throws(() => enrich(source, northbankSkillset(), { [LANGUAGE_SKILL]: fakes[LANGUAGE_SKILL] }), /no implementation for #Microsoft\.Skills\.Text\.KeyPhraseExtractionSkill/);
+    const pages = northbankSkillset();
+    pages.skills[1].context = "/document/pages/*";
+    assert.throws(() => enrich(source, pages, fakes), /only the \/document context/);
+  });
+});
+
+describe("output field mappings", () => {
+  const index = pullIndex(4);
+
+  test("the enriching indexer maps both enrichments into the pull index", () => {
+    const indexer = enrichIndexerDefinition();
+    assert.equal(indexer.name, "northbank-enrich-indexer");
+    assert.equal(indexer.skillsetName, "northbank-enrichment");
+    assert.equal(indexer.targetIndexName, PULL_INDEX);
+    assert.equal(indexer.parameters.configuration.parsingMode, "jsonArray");
+    const { fields, warnings } = applyOutputFieldMappings(enrich(source, northbankSkillset(), fakes), indexer.outputFieldMappings!, index);
+    assert.deepEqual(Object.keys(fields).sort(), ["keyPhrases", "language"]);
+    assert.equal(fields.language, "en");
+    assert.deepEqual(warnings, []);
+  });
+
+  test("a typo in a source path is a warning (the field stays empty); a target outside the index is an error", () => {
+    const tree = enrich(source, northbankSkillset(), fakes);
+    assert.deepEqual(applyOutputFieldMappings(tree, [{ sourceFieldName: "/document/keyphrases", targetFieldName: "keyPhrases" }], index), {
+      fields: {},
+      warnings: ["/document/keyphrases does not exist in the enrichment tree"],
+    });
+    assert.throws(() => applyOutputFieldMappings(tree, [{ sourceFieldName: "/document/language", targetFieldName: "lang" }], index), /has no field lang/);
+    assert.throws(() => applyOutputFieldMappings(tree, [{ sourceFieldName: "language", targetFieldName: "language" }], index), /must start with \/document/);
+  });
+});
+
+describe.runIf(liveStorage)("live: an enriching indexer", () => {
+  test("fills language and key phrases for every document", { timeout: 300_000 }, async () => {
+    const env = liveStorage!;
+    // Upload only when the blob is missing: re-uploading changes it, and the indexers then reprocess every element, which
+    // counts against the skills' free 20 documents per indexer per day (12 elements here).
+    const existing = await azureHttp({ method: "GET", url: blobUrl(env, BLOB), audience: "storage", headers: { "x-ms-version": STORAGE_API } });
+    if (existing.status === 404) await uploadBlob(azureHttp, env, BLOB, toBlobRecords(NORTHBANK_DOCUMENTS));
+    else assert.equal(existing.status, 200);
+    await createOrUpdate(azureHttp, env.searchEndpoint, "indexes", pullIndex(env.dimensions));
+    await createOrUpdate(azureHttp, env.searchEndpoint, "datasources", dataSourceDefinition(env));
+    await createOrUpdate(azureHttp, env.searchEndpoint, "skillsets", northbankSkillset());
+    const started = new Date(Date.now() - 5_000);
+    if ((await createOrUpdate(azureHttp, env.searchEndpoint, "indexers", enrichIndexerDefinition())) === 200) await runIndexer(azureHttp, env.searchEndpoint, ENRICH_INDEXER);
+    await waitForIndexer(azureHttp, env.searchEndpoint, ENRICH_INDEXER, { since: started, timeoutMs: 240_000 });
+    const response = await azureHttp({
+      method: "POST",
+      url: `${env.searchEndpoint}/indexes/${PULL_INDEX}/docs/search?api-version=${SEARCH_API}`,
+      body: { search: "*", select: "id, language, keyPhrases", top: 50 },
+      audience: "search",
+    });
+    assert.equal(response.status, 200);
+    const docs = response.body.value as { language: string | null; keyPhrases: string[] | null }[];
+    assert.equal(docs.length, NORTHBANK_DOCUMENTS.length);
+    for (const d of docs) {
+      assert.equal(d.language, "en");
+      assert.ok((d.keyPhrases ?? []).length > 0, "each chunk has key phrases");
+    }
+    console.log(docs.slice(0, 3).map((d) => d.keyPhrases?.join(", ")).join("\n"));
   });
 });

@@ -44,7 +44,7 @@ Each lab's documentation (`course/README.md` and its lessons) must document: obj
 - Prefer grounded, cited answers; abstain when evidence is insufficient.
 
 ## Course structure: Azure AI Search for apps and agents
-Step numbers follow `docs/course-step-map.md`: the foundation Modules 0–11 use steps 01–70, in a fixed block per module (Module 0: 01–04, Module 1: 05–09, Module 2: 10–16, Module 3: 17–24, where Lab 03 holds 17–21, and Modules 4–11: 25–66). Advanced modules A1–A3 use steps 71–94. Across the foundation, cover indexing, chunking, metadata, BM25, vector and hybrid retrieval, RRF, semantic reranking, approval filters, RAG orchestration, citations, retrieval and generation evaluations, observability and compliance. Start retrieval evaluation with K=5; compare K=10 and K=20 when useful.
+Step numbers follow `docs/course-step-map.md`: the foundation Modules 0–11 use steps 01–70, in a fixed block per module (Module 0: 01–04, Module 1: 05–09, Module 2: 10–16, Module 3: 17–24, Module 4: 25–29, and Modules 5–11: 30–66). Advanced modules A1–A3 use steps 71–94. Across the foundation, cover indexing, chunking, metadata, BM25, vector and hybrid retrieval, RRF, semantic reranking, approval filters, RAG orchestration, citations, retrieval and generation evaluations, observability and compliance. Start retrieval evaluation with K=5; compare K=10 and K=20 when useful.
 
 ## Present tense only
 - Course lessons, READMEs, docs, code comments, test names and UI text describe what exists now and why, as if written fresh today.

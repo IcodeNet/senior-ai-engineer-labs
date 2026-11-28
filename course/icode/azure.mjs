@@ -128,11 +128,13 @@ async function prices(region) {
 async function tokenPrices(model, region) {
   const items = [];
   // contains() is case-sensitive and meter names vary, so search on the last word and filter locally.
-  for (const name of new Set([model.name, model.name.replaceAll("-", " "), model.name.split("-").at(-1)])) {
-    try {
-      items.push(...(await retail(`priceType eq 'Consumption' and contains(meterName, '${name}')`)));
-    } catch {}
-  }
+  const last = model.name.split("-").at(-1);
+  for (const name of new Set([model.name, model.name.replaceAll("-", " "), last, last[0].toUpperCase() + last.slice(1)]))
+    for (const field of ["meterName", "productName"]) {
+      try {
+        items.push(...(await retail(`priceType eq 'Consumption' and contains(${field}, '${name}')`)));
+      } catch {}
+    }
   return modelMeters(items, model.name, region);
 }
 

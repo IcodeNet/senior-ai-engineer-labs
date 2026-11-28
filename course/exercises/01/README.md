@@ -31,7 +31,7 @@ The tests are practice feedback, not grading. You can read them, and you should:
 
 **Tracks.** Concepts, theory and check questions are shared. The hands-on code is per track. TypeScript with Vitest is available now; .NET and FastAPI tracks are planned and will use their own languages and test runners.
 
-**Check questions.** Every foundation step has 3–5 interview-style questions (Lab 03 and the advanced modules still have one interview question each until they are reworked). Each has an answer and an explanation of *why*. Until the workshop renders them as interactive quizzes, they appear as YAML blocks: cover the `answer` and `explanation` lines, commit to an answer, then read on.
+**Check questions.** Every foundation step has 3–5 interview-style questions (Lab 03 and the advanced modules have one interview question each; moving them to this format is planned). Each has an answer and an explanation of *why*. Until the workshop renders them as interactive quizzes, they appear as YAML blocks: cover the `answer` and `explanation` lines, commit to an answer, then read on.
 
 **Failure modes this course is designed against:** treating "the model said so" as evidence; filtering in the prompt instead of the server; believing a green schema check means a true answer; and leaving a billable service running over a weekend.
 

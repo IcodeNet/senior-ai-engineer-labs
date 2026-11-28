@@ -28,13 +28,13 @@ Pick a lesson, edit the **Playground**, then **Run tests**. Your work and progre
 | 0 · Welcome: what you'll build, how Icode works, costs and shutdown before anything is created | 01–02 | authored |
 | 1 · Search foundations: why retrieval, analyzers and the inverted index, BM25 | 05–07 | authored |
 | 2 · Index design: field attributes, the Northbank schema, query syntax and OData filters | 10–12 | authored |
-| Lab 03 · Real Azure (paid while running), Module 3's predecessor | 17–21 | existing |
+| Lab 03 · Real Azure (paid while running), in Module 3's step range | 17–21 | authored |
 | 3–11 · Provision and load, chunking and embeddings, retrieval modes, governance, evaluation, RAG API, React FAQ app, agent, operate | 17–66 | planned |
-| Advanced A1 · Agent engineering and MCP (was Lab 04) | 71–78 | existing |
-| Advanced A2 · Production AI (was Lab 05) | 79–86 | existing |
-| Advanced A3 · Architecture and interview drills (was Lab 06) | 87–94 | existing |
+| Advanced A1 · Agent engineering and MCP | 71–78 | authored |
+| Advanced A2 · Production AI | 79–86 | authored |
+| Advanced A3 · Architecture and interview drills | 87–94 | authored |
 
-**Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md). The previous Labs 01–06 course is at commit `2ff7c3d`; the owner will tag it `v0-labs`.
+**Tracks:** TypeScript now; .NET and FastAPI planned (shared lessons, per-track hands-on). The full module map is in [`course/README.md`](course/README.md#module-map) and the step-number plan in [`docs/course-step-map.md`](docs/course-step-map.md).
 
 The local modules use deterministic fakes, so they are repeatable and free. Lab 03 runs against **real Azure** and costs money while its resources exist:
 
@@ -71,7 +71,7 @@ pnpm --filter @labs/agent-factory test
 
 ## Status
 
-The course is being redesigned ([ADR 0005](docs/architecture/0005-azure-ai-search-course-redesign.md)). Modules 0–2 (TypeScript) are authored on the redesign branch; Modules 3–11 and the .NET and FastAPI tracks are planned. Lab 03 is verified offline in CI; its live run against Azure has not yet been verified on a real subscription. The advanced modules (former Labs 04–06) are local and deterministic, verified in CI. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
+The course structure is in [ADR 0005](docs/architecture/0005-azure-ai-search-course-redesign.md). Modules 0–2 (TypeScript) are authored; Modules 3–11 and the .NET and FastAPI tracks are planned. Lab 03 is verified offline in CI; its live run against Azure has not yet been verified on a real subscription. The advanced modules A1–A3 are local and deterministic, verified in CI. Progress and evidence: [`docs/PROGRESS.md`](docs/PROGRESS.md). Decisions: [`docs/architecture/`](docs/architecture/).
 
 ## Rules for contributors and agents
 

@@ -102,7 +102,7 @@ explanation: >-
 
 ## Recap and next
 
-You can pick the parser a query needs, explain why `chem*` does not need full syntax, write typed OData filters, and build a governance filter that callers cannot widen or inject into. That completes Module 2. **Next:** Module 3 creates the real index on Azure (paid; lessons 17–21 are its current predecessor), loads Northbank content by push and by indexer, and queries it.
+You can pick the parser a query needs, explain why `chem*` does not need full syntax, write typed OData filters, and build a governance filter that callers cannot widen or inject into. That completes Module 2. **Next:** Module 3 creates the real index on Azure (paid; lessons 17–21 cover it today), loads Northbank content by push and by indexer, and queries it.
 
 ## Further reading
 

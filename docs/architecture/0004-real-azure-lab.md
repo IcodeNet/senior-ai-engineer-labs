@@ -4,7 +4,7 @@
 - Date: 2026-11-27
 
 ## Context
-Labs 01–02 teach retrieval and evaluation with deterministic fakes. A senior AI engineer also needs to work with the real services: index schemas, embeddings, query modes, semantic ranking, keyless authentication and cost control. Real resources cost money; AGENTS.md requires a cost estimate, explicit approval, scoped cleanup and post-cleanup verification.
+The local modules teach retrieval and evaluation with deterministic fakes. A senior AI engineer also needs to work with the real services: index schemas, embeddings, query modes, semantic ranking, keyless authentication and cost control. Real resources cost money; AGENTS.md requires a cost estimate, explicit approval, scoped cleanup and post-cleanup verification.
 
 ## Decision
 - Lab 03 (course steps 17–21) runs against Azure AI Search **Basic** (the lowest tier with semantic ranker) and Azure OpenAI (embedding + chat deployments).

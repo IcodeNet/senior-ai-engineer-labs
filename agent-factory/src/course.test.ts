@@ -91,8 +91,28 @@ it('flags the wrong test runner and lessons without an interview question', () =
 it('flags files and folders outside lab.json, README.md, problem/ and solution/ in a step', () => {
   const root = course({ '01': step({ 'index.ts': 'export const f = () => 1;\n', 'notes/todo.md': 'x' }), '02': step() });
   mkdirSync(join(root, 'course/exercises/02/node_modules/.vite'), { recursive: true });
-  writeFileSync(join(root, 'course/exercises/02/.DS_Store'), '');
+  mkdirSync(join(root, 'course/exercises/02/solution/node_modules/.vite'), { recursive: true });
   expect(rules(root)).toEqual(['course-step-layout course/exercises/01/index.ts', 'course-step-layout course/exercises/01/notes']);
+});
+
+it('flags dot files and folders anywhere in a step, but not inside node_modules', () => {
+  const root = course({
+    '01': step({ '.index.ts': 'export const f = () => 1;\n', '.scratch/s.ts': 'x' }),
+    '02': step({ 'problem/.solution.ts': 'x', 'solution/.solution.ts': 'x', 'solution/lib/.env': 'KEY=x' }),
+    '03': step(),
+  });
+  writeFileSync(join(root, 'course/exercises/03/.DS_Store'), '');
+  writeFileSync(join(root, 'course/exercises/03/.gitkeep'), '');
+  mkdirSync(join(root, 'course/exercises/03/problem/node_modules/.vite'), { recursive: true });
+  expect(rules(root)).toEqual([
+    'course-step-layout course/exercises/01/.index.ts',
+    'course-step-layout course/exercises/01/.scratch',
+    'course-step-layout course/exercises/02/problem/.solution.ts',
+    'course-step-layout course/exercises/02/solution/.solution.ts',
+    'course-step-layout course/exercises/02/solution/lib/.env',
+    'course-step-layout course/exercises/03/.DS_Store',
+    'course-step-layout course/exercises/03/.gitkeep',
+  ]);
 });
 
 it('the repository course passes its own structural review', () => {

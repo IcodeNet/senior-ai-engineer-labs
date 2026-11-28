@@ -268,3 +268,79 @@ test("a dependant is never reused while its dependency re-runs, even if that dep
   const reused = transition(planning, { type: "plan", plan: [step("a", "get_policy"), step("b", "convert_currency", ["a"], { x: { $from: "a" } })] }, 1);
   assert.deepEqual(reused, { status: "done", results: { a: undefined, b: "stale" } }, "an undefined result is still a result");
 });
+
+test("reuse needs every dependsOn step, even one whose result is not passed in through $from", () => {
+  const planning: AgentState = {
+    status: "planning",
+    replans: 1,
+    feedback: [],
+    completed: {
+      policy: { tool: "get_policy", args: { topic: "meals" }, result: "cap 40" },
+      submit: { tool: "submit_expense", args: { category: "meals" }, result: "clm-1" },
+    },
+  };
+  const plan: Plan = [step("policy", "get_policy", [], { topic: "travel" }), step("submit", "submit_expense", ["policy"], { category: "meals" })];
+  const replanned = transition(planning, { type: "plan", plan }, 1);
+  assert.deepEqual(replanned.status === "executing" && replanned.results, {}, "policy re-runs, so submit, which waits for it, re-runs too");
+});
+
+test("reuse needs every dependency ready, not just some of them", () => {
+  const planning: AgentState = {
+    status: "planning",
+    replans: 1,
+    feedback: [],
+    completed: {
+      policy: { tool: "get_policy", args: { topic: "meals" }, result: "cap 40" },
+      fx: { tool: "convert_currency", args: { amount: 50 }, result: 40 },
+      submit: { tool: "submit_expense", args: { policy: "cap 40" }, result: "clm-1" },
+    },
+  };
+  const plan: Plan = [
+    step("policy", "get_policy", [], { topic: "meals" }),
+    step("fx", "convert_currency", [], { amount: 500 }),
+    step("submit", "submit_expense", ["policy", "fx"], { policy: { $from: "policy" } }),
+  ];
+  const replanned = transition(planning, { type: "plan", plan }, 1);
+  assert.deepEqual(replanned.status === "executing" && replanned.results, { policy: "cap 40" }, "fx re-runs, so submit must wait for it");
+});
+
+test("a dependency named after an Object.prototype property is not ready just because the name is inherited", () => {
+  const planning: AgentState = {
+    status: "planning",
+    replans: 1,
+    feedback: [],
+    completed: {
+      toString: { tool: "get_policy", args: { topic: "meals" }, result: undefined },
+      submit: { tool: "submit_expense", args: { policy: undefined }, result: "clm-1" },
+    },
+  };
+  const plan: Plan = [
+    step("toString", "get_policy", [], { topic: "travel" }),
+    step("submit", "submit_expense", ["toString"], { policy: { $from: "toString" } }),
+  ];
+  const replanned = transition(planning, { type: "plan", plan }, 1);
+  assert.deepEqual(replanned.status === "executing" && replanned.results, {}, '"toString" in results is true for every object; Object.hasOwn is not');
+});
+
+test("reuse walks the plan in execution order, so a plan listed out of order does not repeat a side effect", { timeout: 2000 }, async () => {
+  const plan: Plan = [
+    step("notify", "notify_manager", ["submit"], { claim: { $from: "submit" } }),
+    step("submit", "submit_expense", ["fx"], { converted: { $from: "fx" } }),
+    step("fx", "convert_currency", [], { amount: 50 }),
+  ];
+  const executed: string[] = [];
+  let notifies = 0;
+  const result = await runPlan("goal", {
+    planner: async () => plan,
+    toolNames: [...tools, "notify_manager"],
+    execute: async (tool, args) => {
+      executed.push(tool);
+      if (tool === "convert_currency") return 40;
+      if (tool === "submit_expense") return `clm for ${String(args.converted)}`;
+      if (++notifies === 1) throw new Error("mail down");
+      return `sent ${String(args.claim)}`;
+    },
+  });
+  assert.deepEqual(executed, ["convert_currency", "submit_expense", "notify_manager", "notify_manager"], "submit is listed before fx but must still be reused");
+  assert.deepEqual(result.state, { status: "done", results: { fx: 40, submit: "clm for 40", notify: "sent clm for 40" } });
+});

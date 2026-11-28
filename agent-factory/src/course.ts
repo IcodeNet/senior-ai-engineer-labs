@@ -24,6 +24,18 @@ function files(dir: string): string[] {
     .sort();
 }
 
+/** The outermost dot files and folders under `dir`, relative to it, skipping node_modules. */
+function hiddenEntries(dir: string, prefix = ''): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(join(dir, prefix), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    if (entry.name === 'node_modules') continue;
+    const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+    if (entry.name.startsWith('.')) found.push(path);
+    else if (entry.isDirectory()) found.push(...hiddenEntries(dir, path));
+  }
+  return found;
+}
+
 export function reviewCourse(root: string): Finding[] {
   const course = join(root, 'course');
   const findings: Finding[] = [];
@@ -52,10 +64,14 @@ export function reviewCourse(root: string): Finding[] {
   for (const id of onDisk) {
     const base = join(exercises, id);
     const rel = `course/exercises/${id}`;
-    // Only the lesson, its config and the two variants belong in a step; node_modules and dot entries are local artefacts.
+    // Only the lesson, its config and the two variants belong in a step; node_modules is the only local artefact.
     for (const name of readdirSync(base).sort())
       if (!STEP_ENTRIES.includes(name) && name !== 'node_modules' && !name.startsWith('.'))
         findings.push(warn('course-step-layout', `${rel}/${name}`, `Unexpected ${name} in a step; a step contains only lab.json, README.md, problem/ and solution/.`));
+    // Dot entries anywhere in a step (outside node_modules) are flagged too: a hidden ".index.ts" or ".scratch/" would
+    // otherwise slip past both this rule and variant parity. No step on main needs one, so there is no allowlist.
+    for (const path of hiddenEntries(base))
+      findings.push(warn('course-step-layout', `${rel}/${path}`, `Unexpected hidden ${path} in a step; dot files and folders do not belong in a step.`));
     let entry = 'index.ts';
     try {
       const lab = json(join(base, 'lab.json')) as { entry?: string; testScript?: string; testArgs?: unknown };

@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { questionProblems, reviewCourse } from './course.js';
+import { readFileSync } from 'node:fs';
+import { foundationSteps, questionProblems, reviewCourse } from './course.js';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => rmSync(root, { recursive: true, force: true })));
@@ -163,11 +164,26 @@ it('questionProblems checks the YAML shape of a question', () => {
 it('steps outside foundation modules are exempt from the template but keep the interview question rule', () => {
   const root = course({ '71': step({ 'README.md': '# 71 · Advanced\n\n## Why it matters\nx\n\n## Interview question\n> Why?\n' }) }, ['71'], 'advanced-a1-agents-mcp');
   expect(rules(root)).toEqual([]);
-  const legacy = course({ '17': step({ 'README.md': lesson(good(1)) }) }, ['17'], 'lab-03-real-azure');
-  expect(rules(legacy)).toEqual(['course-lesson course/exercises/17/README.md']);
+  const other = course({ '17': step({ 'README.md': lesson(good(1)) }) }, ['17'], 'advanced-a9-example');
+  expect(rules(other)).toEqual(['course-lesson course/exercises/17/README.md']);
 });
 
 it('the repository course passes its own structural review', () => {
   const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   expect(reviewCourse(repo)).toEqual([]);
+});
+
+it('the step-template rule covers every Module 3 and Module 4 step in the repository course', () => {
+  const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const config = JSON.parse(readFileSync(join(repo, 'course/course.json'), 'utf8'));
+  const covered = foundationSteps(config);
+  for (const id of ['17', '18', '19', '20', '21', '22', '23', '25', '26', '27', '28']) expect(covered, `step ${id}`).toContain(id);
+  expect(covered.some(id => Number(id) >= 71)).toBe(false);
+});
+
+it('a live-module lesson without check questions is flagged like any foundation lesson', () => {
+  const root = course({ '23': step({ 'README.md': '# 23 · Query\n\n## Interview question\n> Why?\n' }) }, ['23'], 'module-03-provision-and-load');
+  expect(rules(root)).toEqual(['course-lesson-template course/exercises/23/README.md']);
+  const m4 = course({ '25': step({ 'README.md': lesson(good(1) + good(2)) }) }, ['25'], 'module-04-chunking-and-embeddings');
+  expect(rules(m4)).toEqual(['course-check-questions course/exercises/25/README.md']);
 });

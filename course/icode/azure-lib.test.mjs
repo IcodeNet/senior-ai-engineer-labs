@@ -110,7 +110,7 @@ describe("azure lifecycle decisions", () => {
     expect(lostStateMarker({ exists: false }, false)).toBeUndefined();
     expect(lostStateMarker({ exists: true, value: { subscriptionId: SUB } }, true)).toBeUndefined();
     expect(lostStateMarker({ exists: true, path: "/cfg/x.json", value: { subscriptionId: SUB, resourceGroup: "rg-a" } }, false)).toEqual({
-      reason: "course/.azure was removed, but Lab 03 set-up recorded resources (record: /cfg/x.json)",
+      reason: "course/.azure was removed, but Azure set-up recorded resources (record: /cfg/x.json)",
       subscriptionId: SUB,
       resourceGroup: "rg-a",
     });

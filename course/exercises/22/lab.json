@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Knowledge store: projections of the enrichment tree",
+  "description": "Theory and an offline model: table, object and file projections, enrichment paths, keyless connections and what outlives a teardown. Nothing is deployed.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

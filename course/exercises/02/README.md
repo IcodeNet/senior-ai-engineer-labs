@@ -31,7 +31,7 @@ So the cost model is `search units × hours × hourly rate + tokens × token pri
 
 | Marker | Meaning | Banner |
 |---|---|---|
-| `env.json` | set-up finished; resources exist | "Lab 03 Azure resources exist" |
+| `env.json` | set-up finished; resources exist | "Course Azure resources exist" |
 | `resources-may-exist.json` | set-up or shutdown did not finish, or a check found resources | "Paid … resources may exist" |
 | `cost-status-unknown.json` | a check failed or the subscription is unclear | "Cost status unknown" |
 

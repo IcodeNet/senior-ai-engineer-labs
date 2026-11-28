@@ -41,6 +41,18 @@ function hiddenEntries(dir: string, prefix = ''): string[] {
   return found;
 }
 
+type CourseConfig = { modules?: { id?: string; exercises?: { steps?: string[] }[] }[] };
+
+/**
+ * Steps the step-template rule applies to: every step of every foundation module (`module-NN-…`), Modules 0–11,
+ * including the live Azure modules 3 and 4.
+ */
+export function foundationSteps(config: CourseConfig): string[] {
+  return (config.modules ?? [])
+    .filter(m => typeof m.id === 'string' && FOUNDATION_MODULE.test(m.id))
+    .flatMap(m => (m.exercises ?? []).flatMap(e => e.steps ?? []));
+}
+
 export function reviewCourse(root: string): Finding[] {
   const course = join(root, 'course');
   const findings: Finding[] = [];
@@ -49,12 +61,11 @@ export function reviewCourse(root: string): Finding[] {
   const onDisk = existsSync(exercises) ? readdirSync(exercises).filter(name => STEP.test(name)).sort() : [];
 
   let listed: string[] = [];
-  const foundation = new Set<string>();
+  let foundation = new Set<string>();
   try {
-    const config = json(join(course, 'course.json')) as { modules?: { id?: string; exercises?: { steps?: string[] }[] }[] };
+    const config = json(join(course, 'course.json')) as CourseConfig;
     listed = (config.modules ?? []).flatMap(m => (m.exercises ?? []).flatMap(e => e.steps ?? []));
-    for (const m of config.modules ?? [])
-      if (typeof m.id === 'string' && FOUNDATION_MODULE.test(m.id)) for (const e of m.exercises ?? []) for (const s of e.steps ?? []) foundation.add(s);
+    foundation = new Set(foundationSteps(config));
   } catch {
     return [warn('course-config', 'course/course.json', 'course.json is not valid JSON.')];
   }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Grounded answers with Azure OpenAI",
-  "description": "Generate cited answers from approved Azure AI Search results with Azure OpenAI.",
+  "title": "Pull from Blob storage with an indexer",
+  "description": "Upload a JSON array to Blob storage keylessly, define a data source and a jsonArray indexer, model how one blob becomes many documents, and run it.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

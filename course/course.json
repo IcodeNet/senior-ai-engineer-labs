@@ -77,36 +77,90 @@
       ]
     },
     {
-      "id": "lab-03-real-azure",
-      "title": "Lab 03 · Real Azure AI Search and RAG (paid; predecessor of Module 3)",
+      "id": "module-03-provision-and-load",
+      "title": "Module 3 · Provision and load (live)",
       "exercises": [
         {
-          "id": "azure-indexing",
-          "title": "Provisioning and indexing",
+          "id": "provision-search",
+          "title": "Provision Azure AI Search with Bicep",
           "steps": [
-            "17",
+            "17"
+          ]
+        },
+        {
+          "id": "create-index",
+          "title": "Create the Northbank index on Azure",
+          "steps": [
             "18"
           ]
         },
         {
-          "id": "azure-retrieval",
-          "title": "Querying Azure AI Search",
+          "id": "push-api",
+          "title": "Load the index with the push API",
           "steps": [
             "19"
           ]
         },
         {
-          "id": "azure-generation",
-          "title": "Grounded answers",
+          "id": "blob-indexer",
+          "title": "Pull from Blob storage with an indexer",
           "steps": [
             "20"
           ]
         },
         {
-          "id": "azure-evaluation",
-          "title": "Evaluation and shutdown",
+          "id": "skillset",
+          "title": "Enrich with a skillset",
           "steps": [
             "21"
+          ]
+        },
+        {
+          "id": "knowledge-store",
+          "title": "Knowledge store",
+          "steps": [
+            "22"
+          ]
+        },
+        {
+          "id": "query-live",
+          "title": "Query the live index, then shut down",
+          "steps": [
+            "23"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "module-04-chunking-and-embeddings",
+      "title": "Module 4 · Chunking and embeddings",
+      "exercises": [
+        {
+          "id": "chunking",
+          "title": "Why chunk: three chunkers compared",
+          "steps": [
+            "25"
+          ]
+        },
+        {
+          "id": "similarity",
+          "title": "Embeddings and similarity",
+          "steps": [
+            "26"
+          ]
+        },
+        {
+          "id": "vector-fields",
+          "title": "Vector fields, HNSW and profiles",
+          "steps": [
+            "27"
+          ]
+        },
+        {
+          "id": "integrated-vectorization",
+          "title": "Integrated vectorization",
+          "steps": [
+            "28"
           ]
         }
       ]
@@ -229,65 +283,65 @@
   "actions": [
     {
       "id": "azure-prices",
-      "label": "Lab 03 · Show live Azure prices (no sign-in)",
+      "label": "Module 3 · Show live Azure prices (no sign-in)",
       "script": "azure:prices",
-      "group": "Lab 03 · Real Azure",
+      "group": "Module 3 · Azure",
       "description": "Reads list prices for the configured region from the public Azure Retail Prices API. Needs no Azure sign-in and creates nothing."
     },
     {
       "id": "azure-plan",
-      "label": "Lab 03 · Plan Azure set-up (creates nothing)",
+      "label": "Module 3 · Plan Azure set-up (creates nothing)",
       "script": "azure:plan",
-      "group": "Lab 03 · Real Azure",
+      "group": "Module 3 · Azure",
       "description": "Checks your az login, that azure/config.json's models are offered in your region, and shows live list prices. Read-only."
     },
     {
       "id": "azure-up",
-      "label": "Lab 03 · Set up Azure (billable)",
+      "label": "Module 3 · Set up Azure (billable)",
       "script": "azure:up",
-      "group": "Lab 03 · Real Azure",
-      "description": "Creates one course-tagged resource group with Azure AI Search Basic (billed every hour until shut down) and Azure OpenAI (per token). Asks you to type \"create\".",
+      "group": "Module 3 · Azure",
+      "description": "Creates one course-tagged resource group with Azure AI Search Basic (billed every hour until shut down), Azure OpenAI (per token) and a Storage account for the indexers (per GB and operation). Asks you to type \"create\".",
       "destructive": true,
       "cancelGraceSeconds": 120
     },
     {
       "id": "azure-status",
-      "label": "Lab 03 · Azure status and cost so far",
+      "label": "Module 3 · Azure status and cost so far",
       "script": "azure:status",
-      "group": "Lab 03 · Real Azure",
+      "group": "Module 3 · Azure",
       "description": "Lists what is running in the course resource group and estimates the search cost so far. Read-only."
     },
     {
       "id": "azure-down",
-      "label": "Lab 03 · Shut down Azure (delete everything)",
+      "label": "Module 3 · Shut down Azure (delete everything)",
       "script": "azure:down",
-      "group": "Lab 03 · Real Azure",
-      "description": "Deletes the course-tagged resource group and purges the soft-deleted Azure OpenAI account, then verifies. Asks you to type the resource group name.",
+      "group": "Module 3 · Azure",
+      "description": "Deletes the course-tagged resource group (search, Azure OpenAI, storage and role assignments) and purges the soft-deleted Azure OpenAI account, then verifies. Asks you to type the resource group name.",
       "destructive": true,
       "cancelGraceSeconds": 120
     },
     {
       "id": "azure-verify",
-      "label": "Lab 03 · Verify cost is zero",
+      "label": "Module 3 · Verify cost is zero",
       "script": "azure:verify",
-      "group": "Lab 03 · Real Azure",
+      "group": "Module 3 · Azure",
       "description": "Checks the subscription for anything left with the course tag, including soft-deleted accounts. Clears the cost banner only when nothing remains."
     }
   ],
   "indicators": [
     {
       "path": ".azure/env.json",
-      "message": "Lab 03 Azure resources exist (course/.azure/env.json): Azure AI Search Basic is billed every hour. When you finish, run “Shut down Azure” and then “Verify cost is zero” in the Actions tab.",
+      "message": "Course Azure resources exist (course/.azure/env.json): Azure AI Search Basic is billed every hour. When you finish, run “Shut down Azure” and then “Verify cost is zero” in the Actions tab.",
       "level": "danger"
     },
     {
       "path": ".azure/resources-may-exist.json",
-      "message": "Paid Lab 03 Azure resources may exist: a set-up or shutdown did not finish, or a check found course resources. Run “Shut down Azure”, then “Verify cost is zero”; this banner clears only when Verify finds nothing.",
+      "message": "Paid course Azure resources may exist: a set-up or shutdown did not finish, or a check found course resources. Run “Shut down Azure”, then “Verify cost is zero”; this banner clears only when Verify finds nothing.",
       "level": "danger"
     },
     {
       "path": ".azure/cost-status-unknown.json",
-      "message": "Cost status unknown: Lab 03 cannot confirm what exists in Azure (a check failed, the subscription is unclear, or course/.azure was removed; reason in course/.azure/cost-status-unknown.json). Paid resources may still exist. Sign in to the subscription you used and run “Verify cost is zero”.",
+      "message": "Cost status unknown: the course cannot confirm what exists in Azure (a check failed, the subscription is unclear, or course/.azure was removed; reason in course/.azure/cost-status-unknown.json). Paid resources may still exist. Sign in to the subscription you used and run “Verify cost is zero”.",
       "level": "danger"
     }
   ],

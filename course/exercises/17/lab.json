@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "title": "Provision Azure and create a real index",
-  "description": "Create a governed Azure AI Search index with vector and semantic configuration on real Azure resources.",
+  "title": "Provision Azure AI Search with Bicep",
+  "description": "Tiers, search units and what bills; review a search service definition for keyless access and cost, then read live service limits.",
   "runtime": "node",
   "entry": "index.ts",
   "testScript": "test",

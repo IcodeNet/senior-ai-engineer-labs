@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Lab 03 Azure lifecycle: prices | plan | up | status | down | verify | watch. Uses the Azure CLI (`az login` first).
+// Course Azure lifecycle (Modules 3 and 4): prices | plan | up | status | down | verify | watch. Uses the Azure CLI (`az login` first).
 // Runs from the Icode Workshop Actions tab (typed confirmations through the engine's per-run token) or a terminal.
 // Nothing is created or deleted without a typed confirmation; shutdown deletes only course-tagged resource groups.
 //
@@ -266,7 +266,8 @@ async function plan() {
   console.log(`  • Azure AI Search, Basic tier, 1 search unit — billed every hour it exists: ${hourly ? `${hourly.price} ${hourly.currency}/hour (≈ ${estimateCost(hourly.price, 24)} ${hourly.currency}/day)` : "price not available; check https://azure.microsoft.com/pricing/calculator/"}`);
   console.log("  • Semantic ranker on the free plan — monthly allowance; extra requests fail instead of being billed.");
   console.log("  • Azure OpenAI (S0) with an embedding and a chat deployment — pay per token, no hourly charge; the labs use a few hundred thousand tokens at most.");
-  console.log("  • Role assignments for you (no keys are created).");
+  console.log("  • A Storage account (Standard LRS) with one blob container for the indexer's source files — pay per GB and per operation; a few kilobytes here, a fraction of a cent.");
+  console.log("  • Role assignments for you and for the search service's managed identity (no keys are created).");
   console.log("\nPrices are list prices from the Azure Retail Prices API; your agreement, currency and taxes may differ.");
   console.log("Budget alerts only notify you; they do not stop spending. Shut down as soon as you finish: deleting the resource group stops all charges.");
   if (problems.length) console.log(`\n✖ Edit azure/config.json before setting up: choose a region and model versions offered to your subscription (see the lesson).`);
@@ -291,11 +292,11 @@ async function up() {
   });
   az(["group", "create", "--name", group, "--location", ctx.region, "--tags", ...Object.entries(tags).map(([k, v]) => `${k}=${v}`)]);
   const parameters = join(root, ".azure/parameters.json");
-  writeFileSync(parameters, JSON.stringify({ principalId: { value: principal }, tags: { value: tags }, chatModel: { value: config.chatModel }, embeddingModel: { value: config.embeddingModel } }));
+  writeFileSync(parameters, JSON.stringify({ principalId: { value: principal }, tags: { value: tags }, chatModel: { value: config.chatModel }, embeddingModel: { value: config.embeddingModel }, storageContainer: { value: config.storage.container } }));
   console.log("Deploying (several minutes)…");
   const deployment = az(["deployment", "group", "create", "--resource-group", group, "--name", "course", "--template-file", join(root, "azure/main.bicep"), "--parameters", `@${parameters}`]);
   const out = Object.fromEntries(Object.entries(deployment.properties.outputs).map(([k, v]) => [k, v.value]));
-  writeFileSync(envFile, JSON.stringify({ ...out, resourceGroup: group, region: ctx.region, subscriptionId: ctx.account.id, indexName: config.indexName, dimensions: config.embeddingModel.dimensions, createdAt: tags.createdAt, hourly }, null, 2) + "\n");
+  writeFileSync(envFile, JSON.stringify({ ...out, resourceGroup: group, region: ctx.region, subscriptionId: ctx.account.id, indexName: config.indexName, dimensions: config.embeddingModel.dimensions, embeddingModel: config.embeddingModel.name, createdAt: tags.createdAt, hourly }, null, 2) + "\n");
   rmSync(join(root, COST_MARKERS.mayExist), { force: true }); // env.json now drives the banner; the outside record stays
   console.log(`\n✔ Created. Endpoints written to course/.azure/env.json.\n  Role assignments can take a few minutes to apply; if live tests return 403, wait and retry.\n  When you are done: “Shut down Azure” (npm run azure:down), then “Verify cost is zero” (npm run azure:verify).`);
 }
@@ -341,14 +342,14 @@ function verify() {
       `✖ Course resources remain in subscription ${ctx.account.name}:\n${remaining.map((r) => `  • ${r}`).join("\n")}\n` +
         `In a shared subscription, some may belong to another learner's course group.\n` +
         `Run “Shut down Azure” (npm run azure:down) again. If that fails, delete resource group ${t.group} (tag course=${config.courseTag}) in the Azure portal ` +
-        `or with \`az group delete --name ${t.group}\`, and purge soft-deleted accounts with \`az cognitiveservices account purge\` (see lesson 21).`,
+        `or with \`az group delete --name ${t.group}\`, and purge soft-deleted accounts with \`az cognitiveservices account purge\` (see lesson 23).`,
     );
     process.exit(1);
   }
   if (t.anyState || t.recorded) clearAllState();
   if (explicitSubscription !== undefined)
     console.log(
-      `This sweep covered only subscription ${ctx.account.id}, the one you named. If you are not sure which subscription you used for Lab 03, ` +
+      `This sweep covered only subscription ${ctx.account.id}, the one you named. If you are not sure which subscription you used for the course, ` +
         `run Verify in each of them: the banner was cleared on the evidence of this subscription alone.`,
     );
   console.log(`✔ Verified: no course resources remain in subscription ${ctx.account.name} (${ctx.account.id}). This course incurs no further charges there.`);
@@ -396,9 +397,9 @@ async function down() {
 /** Sidecar: keeps the banner honest if course/.azure/ is deleted while the workshop runs. Never calls Azure. */
 async function watch() {
   const check = () => {
-    if (restoreLostState()) console.log(`${new Date().toISOString()} course/.azure was missing while Lab 03 resources may exist; restored a “Cost status unknown” banner.`);
+    if (restoreLostState()) console.log(`${new Date().toISOString()} course/.azure was missing while course Azure resources may exist; restored a “Cost status unknown” banner.`);
   };
-  console.log(`Watching Lab 03 cost state (record: ${durableFile}).`);
+  console.log(`Watching the course's Azure cost state (record: ${durableFile}).`);
   check();
   const timer = setInterval(check, 5_000);
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
@@ -411,7 +412,7 @@ async function watch() {
 
 const commands = { prices: showPrices, plan, up, status, down, verify, watch };
 if (!commands[command]) fail("Usage: node icode/azure.mjs prices|plan|up|status|down|verify [--subscription <id>]|watch");
-if (command !== "watch" && restoreLostState()) console.error("! course/.azure was missing while Lab 03 resources may exist; the banner now shows “Cost status unknown” until Verify passes.");
+if (command !== "watch" && restoreLostState()) console.error("! course/.azure was missing while course Azure resources may exist; the banner now shows “Cost status unknown” until Verify passes.");
 await commands[command]();
 if (command !== "watch") {
   lines?.close();

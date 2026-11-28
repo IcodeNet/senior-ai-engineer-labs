@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Query the live index, then shut down",
+  "description": "Build governed search requests (filter, select, top, count, highlight, facets), parse results, check governance on every hit, and tear Azure down.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Vector fields, HNSW and profiles",
+  "description": "Configure vector fields, HNSW and exhaustive KNN algorithms and profiles, measure approximate recall, then embed the Northbank chunks with Azure OpenAI and query them by vector.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

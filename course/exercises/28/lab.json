@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "title": "Integrated vectorization: chunk and embed in the service",
+  "description": "A skillset with Text Split and Azure OpenAI Embedding, index projections to one document per chunk, a query-time vectorizer, and the checks that keep model, dimensions and governance consistent.",
+  "runtime": "node",
+  "entry": "index.ts",
+  "testScript": "test",
+  "testArgs": [
+    "--run"
+  ]
+}

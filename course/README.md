@@ -9,7 +9,7 @@ Every foundation step follows the same template: **Concept**, **Theory**, 3–5 
 - Node.js 22.13 or later (with npm and Corepack)
 - Git
 
-Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. The real-Azure steps (17–21, Module 3's predecessor) are the exception; see below and step 02.
+Modules 0–2 and the advanced modules use no cloud account, API key or paid service. Estimated cost: **£0**. Modules 3 and 4 have live Azure tests (steps 17–23, 27 and 28), paid while the resources exist; their offline tests are free. See below and step 02.
 
 ## Setup and run
 
@@ -38,9 +38,8 @@ Step IDs are reserved in blocks per module, so there are gaps; see [`docs/course
 | 01–02 | **0 · Welcome** | authored | Course readiness check; cost estimate, cost-banner and verify-to-clear rules |
 | 05–07 | **1 · Search foundations** | authored | Governed naive retrieval under a token budget; tokenizer, analyzer and inverted index; BM25 checked against a hand-worked example |
 | 10–12 | **2 · Index design** | authored | Index-definition validator (attributes, types, vectors, names); the Northbank schema, document keys and governance review; query-parser choice and OData governance filters with schema checking |
-| 17–21 | Lab 03 · Real Azure (Module 3's predecessor) | existing, paid while running | Real index, embeddings, four query modes behind an approval filter, grounded answers, evaluation and shutdown |
-| 17–24 | 3 · Provision and load (live) | planned | Bicep and typed cost confirmation; push loading; indexer, skillset, Blob `jsonArray`; knowledge store theory |
-| 25–29 | 4 · Chunking and embeddings | planned | Chunkers, cosine, vector field, integrated vectorization |
+| 17–23 | **3 · Provision and load (live)** | authored | Bicep review and service limits; index deployment with an update-or-rebuild plan; push batching with 207 handling and retries; keyless Blob data source and `jsonArray` indexer; language and key phrase skillset with the enrichment tree; knowledge store projections (offline); governed queries with hit-level checks; shutdown and verify |
+| 25–28 | **4 · Chunking and embeddings** | authored | Fixed, sentence and structure chunkers compared; cosine, dot product and normalisation; vector fields, HNSW and recall against exact KNN with real embeddings; integrated vectorization with index projections and a vectorizer (live) |
 | 30–35 | 5 · Retrieval modes | planned | Vector, hybrid with RRF, semantic ranker, bake-off |
 | 36–41 | 6 · Governance and security | planned | Server-side filters, security trimming, keyless RBAC, prompt injection in retrieved text |
 | 42–46 | 7 · Evaluation | planned | Precision@5, Recall@5, NDCG, groundedness, held-out sets |
@@ -62,13 +61,15 @@ The advanced modules keep their original lessons (each with an interview questio
 - **Cost:** £0. No cloud resources, API keys or network calls; data is synthetic (`corpus.ts`). Nothing to clean up. Step 02 explains the paid steps' costs and shutdown before they are reached.
 - **Limitations:** the tokenizer is a simplified standard tokenizer; BM25 scores will not equal Azure's `@search.score` (Azure computes per-shard statistics); the index validator and OData checker model a documented subset (common EDM types; no complex types, geography, `any`/`all` or functions). The service remains the authority.
 
-## Lab 03 — real Azure (paid while running; Module 3's predecessor)
+## Modules 3–4 — provision and load, chunking and embeddings (live Azure, paid while running)
 
-Lab 03 creates billable Azure resources. You decide when they exist; `azure:down` removes them all.
+**Objective:** run the Northbank index on a real, keyless Azure AI Search service: provision it with Bicep, load it by push and by pull (Blob, `jsonArray`, skillset), query it with governance on every request, then chunk and embed content yourself and with integrated vectorization.
 
-**Extra prerequisites:** an Azure subscription; permission to create resource groups and role assignments in it (Owner, or Contributor plus User Access Administrator); and the [Azure CLI](https://aka.ms/azure-cli), signed in with `az login`. Lesson 17 covers all of it, including region and model configuration.
+- **Extra prerequisites:** an Azure subscription; permission to create resource groups and role assignments in it (Owner, or Contributor plus User Access Administrator, at subscription scope); the [Azure CLI](https://aka.ms/azure-cli), signed in with `az login`. Lesson 17 covers all of it, including region and model configuration.
+- **Run and test:** open steps 17–28, or `npm test`. Every step has **offline tests** (exact REST requests against a fake transport, always run) and, for 17–21, 23, 27 and 28, **live tests** that run only when `.azure/env.json` exists. Steps 22, 25 and 26 are offline only. Course acceptance and CI never call Azure (`ICODE_AZURE_LIVE=0`).
+- **Limitations:** the indexer, enrichment-tree and knowledge-store functions in steps 20–22 are offline models for reasoning, not emulations of the service; the live runs on a real subscription are the evidence for service behaviour.
 
-Run everything from the workshop's **Actions** tab (group **Lab 03 · Real Azure**). Set-up and shutdown ask you to type a confirmation in an Icode dialog. Each action is also an npm script you can run from a terminal in `course/`, where the same confirmation is a prompt. Confirmations guard against accidental and automated answers (piped or early input), not against a program on your machine that deliberately imitates Icode; see lesson 17.
+Run every Azure action from the workshop's **Actions** tab (group **Module 3 · Azure**). Set-up and shutdown ask you to type a confirmation in an Icode dialog. Each action is also an npm script you can run from a terminal in `course/`, where the same confirmation is a prompt. Confirmations guard against accidental and automated answers (piped or early input), not against a program on your machine that deliberately imitates Icode; see lesson 17.
 
 ```sh
 npm run azure:prices   # live list prices for the configured region; no sign-in, creates nothing
@@ -79,20 +80,19 @@ npm run azure:down     # deletes the course resource group after you type its na
 npm run azure:verify   # confirms nothing from the course remains; only this clears the cost banner
 ```
 
-A red cost banner shows on every lesson while course resources exist or may exist, and **"Cost status unknown"** when a check could not read the subscription. It is driven by marker files in `course/.azure/`. A copy of the record outside the course folder, watched by the `azure-cost-watch` sidecar, brings the banner back if `course/.azure/` is deleted. Only `azure:verify`, sweeping the recorded subscription by the course tag, clears it (see lessons 17 and 21).
+A red cost banner shows on every lesson while course resources exist or may exist, and **"Cost status unknown"** when a check could not read the subscription. It is driven by marker files in `course/.azure/`. A copy of the record outside the course folder, watched by the `azure-cost-watch` sidecar, brings the banner back if `course/.azure/` is deleted. Only `azure:verify`, sweeping the recorded subscription by the course tag, clears it (lessons 17 and 23).
 
 | What `azure:up` creates | How it is charged |
 |---|---|
-| Azure AI Search, Basic tier, 1 search unit | Every hour it exists, whether or not you use it. `azure:plan` shows the current list price for your region. |
-| Semantic ranker, free plan | Monthly free allowance; beyond it, requests fail rather than being billed. |
-| Azure OpenAI (S0) with an embedding deployment (`text-embedding-3-small`) and a chat deployment (`gpt-5-mini`) | Per token only; the labs use a small number of tokens. |
-| Role assignments for you | Free. API keys are disabled; every call uses your Microsoft Entra ID token. |
+| Azure AI Search, Basic tier, 1 search unit, system-assigned identity | Every hour it exists, whether or not you use it. `azure:plan` shows the current list price for your region. |
+| Semantic ranker, free plan; key phrase and language skills | Free allowances (the skills: 20 documents per indexer per day); beyond them, requests fail rather than being billed. |
+| Azure OpenAI (S0) with an embedding deployment (`text-embedding-3-small`) and a chat deployment (`gpt-5-mini`) | Per token only; the modules use a small number of tokens. |
+| Storage account (StorageV2, Standard LRS) with the `northbank-faq` container | Per GB stored and per operation; the course stores a few kilobytes. |
+| Role assignments for you and for the search service's identity | Free. Keys are disabled on all three resources; every call uses a Microsoft Entra ID token. |
 
-Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. `azure:down` refuses to delete a group without that tag, deletes the whole group, purges the soft-deleted Azure OpenAI account and removes `.azure/env.json`; `azure:verify` then checks the subscription for anything left with the course tag. Deleting the resource group is what stops the charges — stopping the workshop or your computer does not. Budget alerts in Azure notify you; they do not stop spending.
+Everything goes into one resource group, tagged `course=senior-ai-engineer-labs`, `owner` and `expiresAt`. `azure:down` refuses to delete a group without that tag, deletes the whole group, purges the soft-deleted Azure OpenAI account and removes `.azure/env.json`; `azure:verify` then checks the subscription for anything left with the course tag, including the storage account. Deleting the resource group is what stops the charges: stopping the workshop or your computer does not. Budget alerts in Azure notify you; they do not stop spending.
 
 Region and models are set in `azure/config.json` (default `swedencentral`). `azure:plan` refuses models that your region does not offer or that retire within a week; change the config if it does. List prices come from the public Azure Retail Prices API and may differ from your agreement.
-
-Each Lab 03 step has **offline tests** (exact REST requests against a fake transport, always run) and **live tests** that run only when `.azure/env.json` exists. Course acceptance and CI never call Azure (`ICODE_AZURE_LIVE=0`).
 
 ## Advanced A1 — agent engineering and MCP (local, free; steps 71–78)
 

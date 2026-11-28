@@ -4,10 +4,10 @@
 - Date: 2026-11-27
 
 ## Context
-Labs need lessons, interview questions, editable exercises and real tests in one place. Icode Workshop (IcodeNet/Icode-workshop) provides that workbench: per-step persistent playgrounds, reset/restore, comparison, streamed test output and course-scoped progress. Its compatibility with a real third-party course was proven by hosting MCP Fundamentals (IcodeNet/mcp-fundamentals, branch `feat/icode-workshop-host`, CI run 46013278215); the engine changes from that work were merged in IcodeNet/Icode-workshop PR #4 at `64f1fec`. The earlier home-grown player on `prototype/icode-workshop` is superseded.
+Labs need lessons, interview questions, editable exercises and real tests in one place. Icode Workshop (IcodeNet/Icode-workshop) provides that workbench: per-step persistent playgrounds, reset/restore, comparison, streamed test output and course-scoped progress. Its apps layout was proven by hosting the course in IcodeNet/mcp-fundamentals (branch `feat/icode-workshop-host`, CI run 46013278215); the engine changes from that work were merged in IcodeNet/Icode-workshop PR #4 at `64f1fec`. The earlier home-grown player on `prototype/icode-workshop` is superseded.
 
 ## Decision
-- The course lives in `course/` in Icode's **native** format (`course.json`, `exercises/NN/{lab.json,README.md,problem,solution}`), not the Epic compatibility layout.
+- The course lives in `course/` in Icode's **native** format (`course.json`, `exercises/NN/{lab.json,README.md,problem,solution}`), not the apps layout.
 - The engine is pinned by Git commit in `course/icode/engine.json`; no npm package is published yet.
 - `course/` is a standalone npm project with its own `package-lock.json`, because the engine's `setup` installs course dependencies with `npm ci`. It is not part of the pnpm workspace.
 - Exercises are TypeScript (strict) tested with Vitest through each variant's `test` package script (`testScript` in `lab.json`).

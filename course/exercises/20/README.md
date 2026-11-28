@@ -1,6 +1,6 @@
 # 20 · Grounded answers with Azure OpenAI
 
-> **Cost notice.** The live tests in this step call real, billable Azure resources created by `npm run azure:up`. Azure AI Search Basic is charged for every hour it exists; Azure OpenAI is charged per token. When you finish the lab, run `npm run azure:down` and then `npm run azure:verify`. Without Azure set up, the live tests are skipped and the offline tests still check your code.
+> **Cost notice.** The live tests in this step call real, billable Azure resources created by the **Set up Azure** action (lesson 17). Azure AI Search Basic is charged for every hour it exists; Azure OpenAI is charged per token. The red cost banner shows while anything may exist. When you finish the lab, run **Shut down Azure** and then **Verify cost is zero** from the Actions tab (lesson 21; terminal: `npm run azure:down`, `npm run azure:verify`). Without Azure set up, the live tests are skipped and the offline tests still check your code.
 
 ## Why it matters
 This step runs the step 08 pipeline against real services: Azure AI Search retrieves, your code **re-checks eligibility**, builds the grounded prompt with untrusted sources, Azure OpenAI generates, and citations are validated before anything reaches a user.

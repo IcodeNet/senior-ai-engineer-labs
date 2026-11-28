@@ -14,11 +14,13 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node icode/acceptance.mjs",
     "test:browser": "node icode/browser.mjs",
+    "azure:prices": "node icode/azure.mjs prices",
     "azure:plan": "node icode/azure.mjs plan",
     "azure:up": "node icode/azure.mjs up",
     "azure:status": "node icode/azure.mjs status",
     "azure:down": "node icode/azure.mjs down",
     "azure:verify": "node icode/azure.mjs verify",
+    "azure:watch": "node icode/azure.mjs watch",
     "test:tools": "vitest run --dir icode"
   },
   "devDependencies": {

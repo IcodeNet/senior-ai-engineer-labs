@@ -36,6 +36,9 @@ jobs:
       - run: npm run typecheck
       - name: Azure lifecycle logic (offline)
         run: npm run test:tools
+      - name: Live Azure list prices (informational; public Retail Prices API, no sign-in)
+        continue-on-error: true
+        run: npm run azure:prices
       - name: Compile Azure infrastructure (no deployment)
         run: az bicep build --file azure/main.bicep --stdout > /dev/null
       - run: npm run validate
